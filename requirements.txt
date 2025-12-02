@@ -1,4 +1,6 @@
 torch
+torchvision
+torchaudio
 adam-atan2
 einops
 tqdm
