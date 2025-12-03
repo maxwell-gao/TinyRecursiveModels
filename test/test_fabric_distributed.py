@@ -5,7 +5,8 @@ from lightning.fabric import Fabric
 def main():
     # Initialize Fabric
     # When launched with torchrun, it detects the environment.
-    fabric = Fabric()
+    # We force devices=2 to match torchrun --nproc_per_node=2
+    fabric = Fabric(devices=2)
     fabric.launch()
     
     rank = fabric.global_rank
