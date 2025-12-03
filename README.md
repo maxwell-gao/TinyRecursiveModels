@@ -131,6 +131,24 @@ arch.H_cycles=3 arch.L_cycles=4 \
 
 *Runtime:* < 24 hours
 
+### Maze-Hard with fabric (assuming 8 L4 GPUs):
+
+```bash
+run_name="pretrain_att_maze30x30"
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
+arch=trm \
+data_paths="[data/maze-30x30-hard-1k]" \
+evaluators="[]" \
+epochs=25000 eval_interval=5000 \
+lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
+arch.L_layers=2 \
+arch.H_cycles=3 arch.L_cycles=4 \
++run_name=${run_name} ema=True \
+early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
+```  
+
+*Runtime:* < 12 hours (often less thanks to early stopping)
+
 ## Reference
 
 If you find our work useful, please consider citing:
