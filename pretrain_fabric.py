@@ -1,6 +1,10 @@
 """
 Fabric-based pretraining script for recursive reasoning models.
 Modular version using train/ package.
+
+Compatible with both:
+- Single GPU: python pretrain_fabric.py
+- Multi-GPU via torchrun: torchrun --nproc-per-node 4 pretrain_fabric.py
 """
 
 import os
@@ -8,7 +12,6 @@ import copy
 import shutil
 import yaml
 
-import torch
 import torch.distributed as dist
 import tqdm
 import wandb
@@ -16,7 +19,6 @@ import coolname
 import hydra
 from omegaconf import DictConfig
 from lightning.fabric import Fabric
-from lightning.fabric.strategies import DDPStrategy
 
 from train.config import PretrainConfig
 from train.state import init_train_state, save_train_state
@@ -82,17 +84,34 @@ def load_synced_config(hydra_config: DictConfig, fabric: Fabric) -> PretrainConf
 
 @hydra.main(config_path="config", config_name="cfg_pretrain", version_base=None)
 def launch(hydra_config: DictConfig) -> None:
-    """Main training entry point using Fabric."""
+    """
+    Main training entry point using Fabric.
 
-    # Initialize Fabric
-    fabric = Fabric(
-        accelerator="cuda",
-        devices="auto",
-        strategy=DDPStrategy(find_unused_parameters=False)
-        if torch.cuda.device_count() > 1
-        else "auto",
-        precision="32-true",
-    )
+    Compatible with:
+    - Single GPU: python pretrain_fabric.py
+    - Multi-GPU via torchrun: torchrun --nproc-per-node 4 pretrain_fabric.py
+    """
+
+    # Determine if launched via torchrun (sets LOCAL_RANK env var)
+    is_torchrun = "LOCAL_RANK" in os.environ
+
+    if is_torchrun:
+        # When using torchrun, let Fabric detect the environment
+        # torchrun already sets up WORLD_SIZE, RANK, LOCAL_RANK
+        fabric = Fabric(
+            accelerator="cuda",
+            strategy="ddp",  # Use DDP strategy for torchrun
+            precision="32-true",
+        )
+    else:
+        # Single GPU or Fabric-managed multi-GPU
+        fabric = Fabric(
+            accelerator="cuda",
+            devices="auto",
+            strategy="auto",
+            precision="32-true",
+        )
+
     fabric.launch()
 
     # Create CPU process group for evaluators
