@@ -128,7 +128,9 @@ def create_model(
         if fabric.world_size > 1:
             with torch.no_grad():
                 for param in list(model.parameters()) + list(model.buffers()):
-                    fabric.broadcast(param, src=0)
+                    # Fabric broadcast is not in-place, unlike torch.distributed.broadcast
+                    broadcasted = fabric.broadcast(param, src=0)
+                    param.data.copy_(broadcasted)
 
     # Get puzzle_emb_ndim from arch extra config (default to non-zero if not specified)
     puzzle_emb_ndim = config.arch.__pydantic_extra__.get("puzzle_emb_ndim", 1)  # type: ignore

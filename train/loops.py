@@ -58,7 +58,9 @@ def train_batch(
     if fabric.world_size > 1:
         for param in train_state.model.parameters():
             if param.grad is not None:
-                fabric.all_reduce(param.grad, reduce_op="sum")
+                # Fabric all_reduce is not in-place, unlike torch.distributed.all_reduce
+                reduced_grad = fabric.all_reduce(param.grad, reduce_op="sum")
+                param.grad.data.copy_(reduced_grad)
 
     # Apply optimizer
     lr_this_step = None
