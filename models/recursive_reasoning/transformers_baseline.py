@@ -23,7 +23,15 @@ from torch import nn
 from pydantic import BaseModel
 
 from models.common import trunc_normal_init_
-from models.layers import rms_norm, SwiGLU, Attention, RotaryEmbedding, CosSin, CastedEmbedding, CastedLinear
+from models.layers import (
+    rms_norm,
+    SwiGLU,
+    Attention,
+    RotaryEmbedding,
+    CosSin,
+    CastedEmbedding,
+    CastedLinear,
+)
 from models.sparse_embedding import CastedSparseEmbedding
 
 
@@ -65,7 +73,9 @@ class Model_ACTV2Config(BaseModel):
     # Halting Q-learning config
     halt_max_steps: int
     halt_exploration_prob: float
-    act_enabled: bool = True  # If False, always run halt_max_steps (no early stopping during training)
+    act_enabled: bool = (
+        True  # If False, always run halt_max_steps (no early stopping during training)
+    )
     act_inference: bool = False  # If True, use adaptive computation during inference
 
     forward_dtype: str = "bfloat16"
@@ -92,11 +102,14 @@ class Model_ACTV2Block(nn.Module):
         # Post Norm
         # Self Attention
         hidden_states = rms_norm(
-            hidden_states + self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states),
+            hidden_states
+            + self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states),
             variance_epsilon=self.norm_eps,
         )
         # Fully Connected
-        hidden_states = rms_norm(hidden_states + self.mlp(hidden_states), variance_epsilon=self.norm_eps)
+        hidden_states = rms_norm(
+            hidden_states + self.mlp(hidden_states), variance_epsilon=self.norm_eps
+        )
         return hidden_states
 
 
@@ -106,7 +119,9 @@ class Model_ACTV2ReasoningModule(nn.Module):
 
         self.layers = torch.nn.ModuleList(layers)
 
-    def forward(self, hidden_states: torch.Tensor, input_injection: torch.Tensor, **kwargs) -> torch.Tensor:
+    def forward(
+        self, hidden_states: torch.Tensor, input_injection: torch.Tensor, **kwargs
+    ) -> torch.Tensor:
         # Input injection (add)
         hidden_states = hidden_states + input_injection
         # Layers
@@ -132,10 +147,14 @@ class Model_ACTV2_Inner(nn.Module):
             init_std=embed_init_std,
             cast_to=self.forward_dtype,
         )
-        self.lm_head = CastedLinear(self.config.hidden_size, self.config.vocab_size, bias=False)
+        self.lm_head = CastedLinear(
+            self.config.hidden_size, self.config.vocab_size, bias=False
+        )
         self.q_head = CastedLinear(self.config.hidden_size, 2, bias=True)
 
-        self.puzzle_emb_len = -(self.config.puzzle_emb_ndim // -self.config.hidden_size)  # ceil div
+        self.puzzle_emb_len = -(
+            self.config.puzzle_emb_ndim // -self.config.hidden_size
+        )  # ceil div
         if self.config.puzzle_emb_ndim > 0:
             # Zero init puzzle embeddings
             self.puzzle_emb = CastedSparseEmbedding(
@@ -170,7 +189,9 @@ class Model_ACTV2_Inner(nn.Module):
 
         # Initial states
         self.H_init = nn.Buffer(
-            trunc_normal_init_(torch.empty(self.config.hidden_size, dtype=self.forward_dtype), std=1),
+            trunc_normal_init_(
+                torch.empty(self.config.hidden_size, dtype=self.forward_dtype), std=1
+            ),
             persistent=True,
         )
 
@@ -188,18 +209,29 @@ class Model_ACTV2_Inner(nn.Module):
         if self.config.puzzle_emb_ndim > 0:
             puzzle_embedding = self.puzzle_emb(puzzle_identifiers)
 
-            pad_count = self.puzzle_emb_len * self.config.hidden_size - puzzle_embedding.shape[-1]
+            pad_count = (
+                self.puzzle_emb_len * self.config.hidden_size
+                - puzzle_embedding.shape[-1]
+            )
             if pad_count > 0:
                 puzzle_embedding = F.pad(puzzle_embedding, (0, pad_count))
 
             embedding = torch.cat(
-                (puzzle_embedding.view(-1, self.puzzle_emb_len, self.config.hidden_size), embedding), dim=-2
+                (
+                    puzzle_embedding.view(
+                        -1, self.puzzle_emb_len, self.config.hidden_size
+                    ),
+                    embedding,
+                ),
+                dim=-2,
             )
 
         # Position embeddings
         if self.config.pos_encodings == "learned":
             # scale by 1/sqrt(2) to maintain forward variance
-            embedding = 0.707106781 * (embedding + self.embed_pos.embedding_weight.to(self.forward_dtype))
+            embedding = 0.707106781 * (
+                embedding + self.embed_pos.embedding_weight.to(self.forward_dtype)
+            )
 
         # Scale
         return self.embed_scale * embedding
@@ -227,7 +259,9 @@ class Model_ACTV2_Inner(nn.Module):
         )
 
         # Input encoding
-        input_embeddings = self._input_embeddings(batch["inputs"], batch["puzzle_identifiers"])
+        input_embeddings = self._input_embeddings(
+            batch["inputs"], batch["puzzle_identifiers"]
+        )
 
         # 1-step grad
         z_H = self.H_level(carry.z_H, input_embeddings, **seq_info)
@@ -280,7 +314,9 @@ class Model_ACTV2(nn.Module):
         new_steps = torch.where(carry.halted, 0, carry.steps)
 
         new_current_data = {
-            k: torch.where(carry.halted.view((-1,) + (1,) * (batch[k].ndim - 1)), batch[k], v)
+            k: torch.where(
+                carry.halted.view((-1,) + (1,) * (batch[k].ndim - 1)), batch[k], v
+            )
             for k, v in carry.current_data.items()
         }
 
@@ -289,7 +325,11 @@ class Model_ACTV2(nn.Module):
             new_inner_carry, new_current_data
         )
 
-        outputs = {"logits": logits, "q_halt_logits": q_halt_logits, "q_continue_logits": q_continue_logits}
+        outputs = {
+            "logits": logits,
+            "q_halt_logits": q_halt_logits,
+            "q_continue_logits": q_continue_logits,
+        }
 
         with torch.no_grad():
             # Step
@@ -316,8 +356,11 @@ class Model_ACTV2(nn.Module):
                 # Exploration (only during training)
                 if self.training:
                     min_halt_steps = (
-                        torch.rand_like(q_halt_logits) < self.config.halt_exploration_prob
-                    ) * torch.randint_like(new_steps, low=2, high=self.config.halt_max_steps + 1)
+                        torch.rand_like(q_halt_logits)
+                        < self.config.halt_exploration_prob
+                    ) * torch.randint_like(
+                        new_steps, low=2, high=self.config.halt_max_steps + 1
+                    )
                     halted = halted & (new_steps >= min_halt_steps)
 
                 # Compute target Q (only during training)
