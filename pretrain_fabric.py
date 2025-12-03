@@ -1,657 +1,33 @@
 """
 Fabric-based pretraining script for recursive reasoning models.
-This is a refactored version of pretrain.py using Lightning Fabric for cleaner distributed training.
+Modular version using train/ package.
 """
 
-from typing import Optional, Any, Sequence, List
-from dataclasses import dataclass
 import os
-import math
-import yaml
-import shutil
 import copy
+import shutil
+import yaml
 
 import torch
-from torch import nn
-from torch.utils.data import DataLoader
-
+import torch.distributed as dist
 import tqdm
 import wandb
 import coolname
 import hydra
-import pydantic
 from omegaconf import DictConfig
-from adam_atan2_pytorch import AdamAtan2
 from lightning.fabric import Fabric
 from lightning.fabric.strategies import DDPStrategy
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
-from puzzle_dataset import PuzzleDataset, PuzzleDatasetConfig, PuzzleDatasetMetadata
-from utils.functions import load_model_class, get_model_source_path
-from models.sparse_embedding import CastedSparseEmbeddingSignSGD_Distributed
+from train.config import PretrainConfig
+from train.state import init_train_state, save_train_state
+from train.data import create_dataloader, create_evaluators
+from train.loops import train_batch, evaluate
+from train.early_stopping import EarlyStoppingWrapper
+from utils.functions import get_model_source_path
 from models.ema import EMAHelper
 
 
-class LossConfig(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="allow")
-    name: str
-
-
-class ArchConfig(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="allow")
-    name: str
-    loss: LossConfig
-
-
-class EvaluatorConfig(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="allow")
-    name: str
-
-
-class PretrainConfig(pydantic.BaseModel):
-    # Config
-    arch: ArchConfig
-    # Data
-    data_paths: List[str]
-    data_paths_test: List[str] = []
-    # Evaluators
-    evaluators: List[EvaluatorConfig] = []
-
-    # Hyperparams
-    global_batch_size: int
-    epochs: int
-
-    lr: float
-    lr_min_ratio: float
-    lr_warmup_steps: int
-
-    weight_decay: float
-    beta1: float
-    beta2: float
-
-    # Puzzle embedding
-    puzzle_emb_lr: float
-    puzzle_emb_weight_decay: float
-
-    # Names
-    project_name: Optional[str] = None
-    run_name: Optional[str] = None
-    load_checkpoint: Optional[str] = None
-    checkpoint_path: Optional[str] = None
-
-    # Extras
-    seed: int = 0
-    checkpoint_every_eval: bool = False
-    eval_interval: Optional[int] = None
-    min_eval_interval: Optional[int] = 0  # when to start eval
-    eval_save_outputs: List[str] = []
-
-    ema: bool = False  # use Exponential-Moving-Average
-    ema_rate: float = 0.999  # EMA-rate
-    freeze_weights: bool = (
-        False  # If True, freeze weights and only learn the embeddings
-    )
-
-    # Early stopping
-    early_stopping: bool = False  # Enable early stopping
-    early_stopping_monitor: str = "exact_accuracy"  # Metric to monitor
-    early_stopping_patience: int = 3  # Number of checks with no improvement
-    early_stopping_mode: str = "max"  # "min" or "max"
-    early_stopping_min_delta: float = 0.0  # Minimum change to qualify as improvement
-
-
-class EarlyStoppingWrapper:
-    """Wrapper to use Lightning's EarlyStopping in a non-Lightning training loop."""
-
-    def __init__(self, config: PretrainConfig):
-        self.enabled = config.early_stopping
-        if self.enabled:
-            self.callback = EarlyStopping(
-                monitor=config.early_stopping_monitor,
-                patience=config.early_stopping_patience,
-                mode=config.early_stopping_mode,
-                min_delta=config.early_stopping_min_delta,
-                verbose=True,
-                check_finite=True,
-            )
-            self.should_stop = False
-        else:
-            self.callback = None
-            self.should_stop = False
-
-    def check(self, metrics: dict, fabric: Fabric) -> bool:
-        """
-        Check if training should stop based on the monitored metric.
-        Uses Fabric for broadcasting the decision across all ranks.
-
-        Args:
-            metrics: Dictionary of metrics from evaluation
-            fabric: Fabric instance for distributed communication
-
-        Returns:
-            True if training should stop, False otherwise
-        """
-        if not self.enabled or self.callback is None:
-            return False
-
-        should_stop = False
-
-        # Only rank 0 evaluates the stopping criteria
-        if fabric.global_rank == 0:
-            # Find the monitored metric in the metrics dict
-            monitor = self.callback.monitor
-            current = None
-
-            # Search for the metric in the nested metrics structure
-            if metrics is not None:
-                for set_name, set_metrics in metrics.items():
-                    if isinstance(set_metrics, dict):
-                        if monitor in set_metrics:
-                            current = set_metrics[monitor]
-                            break
-                    elif monitor in str(set_name):
-                        current = set_metrics
-                        break
-
-            if current is None:
-                print(f"Early stopping: metric '{monitor}' not found in metrics")
-            else:
-                # Convert to tensor if needed
-                if not isinstance(current, torch.Tensor):
-                    current = torch.tensor(current)
-
-                # Use _evaluate_stopping_criteria which returns (should_stop, reason)
-                should_stop, reason = self.callback._evaluate_stopping_criteria(current)
-
-                if should_stop:
-                    self.should_stop = True
-                    print(
-                        f"Early stopping triggered! "
-                        f"Best {monitor}: {self.callback.best_score:.6f}, "
-                        f"Reason: {reason}"
-                    )
-
-        # Broadcast decision to all ranks using Fabric
-        should_stop = fabric.broadcast(should_stop, src=0)
-        self.should_stop = should_stop
-
-        return should_stop
-
-
-@dataclass
-class TrainState:
-    model: nn.Module
-    optimizers: Sequence[torch.optim.Optimizer]
-    optimizer_lrs: Sequence[float]
-    carry: Any
-
-    step: int
-    total_steps: int
-
-
-def create_dataloader(config: PretrainConfig, split: str, fabric: Fabric, **kwargs):
-    """Create dataloader with Fabric-aware rank and world_size."""
-    dataset = PuzzleDataset(
-        PuzzleDatasetConfig(
-            seed=config.seed,
-            dataset_paths=config.data_paths_test
-            if len(config.data_paths_test) > 0 and split == "test"
-            else config.data_paths,
-            rank=fabric.global_rank,
-            num_replicas=fabric.world_size,
-            **kwargs,
-        ),
-        split=split,
-    )
-    dataloader = DataLoader(
-        dataset,
-        batch_size=None,
-        num_workers=1,
-        prefetch_factor=8,
-        pin_memory=True,
-        persistent_workers=True,
-    )
-    return dataloader, dataset.metadata
-
-
-def create_model(
-    config: PretrainConfig,
-    train_metadata: PuzzleDatasetMetadata,
-    fabric: Fabric,
-):
-    """Create model and optimizers, broadcast weights using Fabric."""
-    model_cfg = dict(
-        **config.arch.__pydantic_extra__,  # type: ignore
-        batch_size=config.global_batch_size // fabric.world_size,
-        vocab_size=train_metadata.vocab_size,
-        seq_len=train_metadata.seq_len,
-        num_puzzle_identifiers=train_metadata.num_puzzle_identifiers,
-        causal=False,  # Non-autoregressive
-    )
-
-    # Instantiate model with loss head
-    model_cls = load_model_class(config.arch.name)
-    loss_head_cls = load_model_class(config.arch.loss.name)
-
-    with fabric.init_module():
-        model: nn.Module = model_cls(model_cfg)
-        print(model)
-        model = loss_head_cls(model, **config.arch.loss.__pydantic_extra__)  # type: ignore
-
-    # Load checkpoint on rank 0
-    if fabric.global_rank == 0:
-        load_checkpoint(model, config)
-
-    # Broadcast parameters from rank 0 using Fabric
-    if fabric.world_size > 1:
-        with torch.no_grad():
-            for param in list(model.parameters()) + list(model.buffers()):
-                fabric.broadcast(param, src=0)
-
-    # Compile model
-    if "DISABLE_COMPILE" not in os.environ:
-        model = torch.compile(model)  # type: ignore
-
-    # Optimizers and lr
-    if config.arch.puzzle_emb_ndim == 0:
-        optimizers = [
-            AdamAtan2(
-                model.parameters(),
-                lr=0.0001,  # Needs to be set by scheduler
-                weight_decay=config.weight_decay,
-                betas=(config.beta1, config.beta2),
-            )
-        ]
-        optimizer_lrs = [config.lr]
-    elif config.freeze_weights:
-        optimizers = [
-            CastedSparseEmbeddingSignSGD_Distributed(
-                model.model.puzzle_emb.buffers(),  # type: ignore
-                lr=0.0001,  # Needs to be set by scheduler
-                weight_decay=config.puzzle_emb_weight_decay,
-                world_size=fabric.world_size,
-            )
-        ]
-        optimizer_lrs = [config.puzzle_emb_lr]
-    else:
-        optimizers = [
-            CastedSparseEmbeddingSignSGD_Distributed(
-                model.model.puzzle_emb.buffers(),  # type: ignore
-                lr=0.0001,  # Needs to be set by scheduler
-                weight_decay=config.puzzle_emb_weight_decay,
-                world_size=fabric.world_size,
-            ),
-            AdamAtan2(
-                model.parameters(),
-                lr=0.0001,  # Needs to be set by scheduler
-                weight_decay=config.weight_decay,
-                betas=(config.beta1, config.beta2),
-            ),
-        ]
-        optimizer_lrs = [config.puzzle_emb_lr, config.lr]
-
-    return model, optimizers, optimizer_lrs
-
-
-def cosine_schedule_with_warmup_lr_lambda(
-    current_step: int,
-    *,
-    base_lr: float,
-    num_warmup_steps: int,
-    num_training_steps: int,
-    min_ratio: float = 0.0,
-    num_cycles: float = 0.5,
-):
-    if current_step < num_warmup_steps:
-        return base_lr * float(current_step) / float(max(1, num_warmup_steps))
-
-    progress = float(current_step - num_warmup_steps) / float(
-        max(1, num_training_steps - num_warmup_steps)
-    )
-    return base_lr * (
-        min_ratio
-        + max(
-            0.0,
-            (1 - min_ratio)
-            * 0.5
-            * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)),
-        )
-    )
-
-
-def init_train_state(
-    config: PretrainConfig,
-    train_metadata: PuzzleDatasetMetadata,
-    fabric: Fabric,
-):
-    """Initialize training state with Fabric."""
-    # Estimated total training steps
-    total_steps = int(
-        config.epochs
-        * train_metadata.total_groups
-        * train_metadata.mean_puzzle_examples
-        / config.global_batch_size
-    )
-
-    # Model
-    model, optimizers, optimizer_lrs = create_model(config, train_metadata, fabric)
-
-    return TrainState(
-        step=0,
-        total_steps=total_steps,
-        model=model,
-        optimizers=optimizers,
-        optimizer_lrs=optimizer_lrs,
-        carry=None,
-    )
-
-
-def save_train_state(config: PretrainConfig, train_state: TrainState):
-    """Save model checkpoint."""
-    if config.checkpoint_path is None:
-        return
-
-    os.makedirs(config.checkpoint_path, exist_ok=True)
-    torch.save(
-        train_state.model.state_dict(),
-        os.path.join(config.checkpoint_path, f"step_{train_state.step}"),
-    )
-
-
-def load_checkpoint(model: nn.Module, config: PretrainConfig):
-    """Load model checkpoint."""
-    if config.load_checkpoint is not None:
-        print(f"Loading checkpoint {config.load_checkpoint}")
-
-        # Load state dict
-        state_dict = torch.load(config.load_checkpoint, map_location="cuda")
-
-        # Resize and reset puzzle emb if needed
-        puzzle_emb_name = "_orig_mod.model.inner.puzzle_emb.weights"
-        expected_shape: torch.Size = model.model.puzzle_emb.weights.shape  # type: ignore
-        if puzzle_emb_name in state_dict:
-            puzzle_emb = state_dict[puzzle_emb_name]
-            if puzzle_emb.shape != expected_shape:
-                print(
-                    f"Resetting puzzle embedding as shape is different. Found {puzzle_emb.shape}, Expected {expected_shape}"
-                )
-                # Re-initialize using mean
-                state_dict[puzzle_emb_name] = (
-                    torch.mean(puzzle_emb, dim=0, keepdim=True)
-                    .expand(expected_shape)
-                    .contiguous()
-                )
-        model.load_state_dict(state_dict, assign=True)
-
-
-def compute_lr(base_lr: float, config: PretrainConfig, train_state: TrainState):
-    """Compute learning rate with cosine schedule."""
-    return cosine_schedule_with_warmup_lr_lambda(
-        current_step=train_state.step,
-        base_lr=base_lr,
-        num_warmup_steps=round(config.lr_warmup_steps),
-        num_training_steps=train_state.total_steps,
-        min_ratio=config.lr_min_ratio,
-    )
-
-
-def create_evaluators(
-    config: PretrainConfig, eval_metadata: PuzzleDatasetMetadata
-) -> List[Any]:
-    """Create evaluators for validation."""
-    data_paths = (
-        config.data_paths_test if len(config.data_paths_test) > 0 else config.data_paths
-    )
-    # Initialize evaluators
-    evaluators = []
-    for cfg in config.evaluators:
-        for data_path in data_paths:
-            cls = load_model_class(cfg.name, "evaluators.")(
-                data_path=data_path,
-                eval_metadata=eval_metadata,
-                **cfg.__pydantic_extra__,
-            )  # type: ignore
-            evaluators.append(cls)
-
-    return evaluators
-
-
-def train_batch(
-    config: PretrainConfig,
-    train_state: TrainState,
-    batch: Any,
-    global_batch_size: int,
-    fabric: Fabric,
-):
-    """
-    Train on a single batch using Fabric for gradient synchronization.
-    """
-    train_state.step += 1
-    if train_state.step > train_state.total_steps:  # At most train_total_steps
-        return
-
-    # To device (Fabric handles device placement)
-    batch = {k: v.to(fabric.device) for k, v in batch.items()}
-
-    # Init carry if it is None
-    if train_state.carry is None:
-        with torch.device(fabric.device):
-            train_state.carry = train_state.model.initial_carry(batch)  # type: ignore
-
-    # Forward
-    train_state.carry, loss, metrics, _, _ = train_state.model(
-        carry=train_state.carry, batch=batch, return_keys=[]
-    )
-
-    # Backward with Fabric (handles gradient sync automatically for DDP-wrapped models)
-    # Note: Since we use custom optimizers, we do manual gradient sync here
-    scaled_loss = (1 / global_batch_size) * loss
-    fabric.backward(scaled_loss)
-
-    # Manual gradient sync (needed because model is not wrapped with fabric.setup())
-    if fabric.world_size > 1:
-        for param in train_state.model.parameters():
-            if param.grad is not None:
-                fabric.all_reduce(param.grad, reduce_op="sum")
-
-    # Apply optimizer
-    lr_this_step = None
-    for optim, base_lr in zip(train_state.optimizers, train_state.optimizer_lrs):
-        lr_this_step = compute_lr(base_lr, config, train_state)
-
-        for param_group in optim.param_groups:
-            param_group["lr"] = lr_this_step
-
-        optim.step()
-        optim.zero_grad()
-
-    # Reduce metrics
-    if len(metrics):
-        assert not any(v.requires_grad for v in metrics.values())
-
-        metric_keys = list(
-            sorted(metrics.keys())
-        )  # Sort keys to guarantee all processes use the same order.
-        # Reduce and reconstruct
-        metric_values = torch.stack([metrics[k] for k in metric_keys])
-        if fabric.world_size > 1:
-            metric_values = fabric.all_reduce(metric_values, reduce_op="sum")
-
-        if fabric.global_rank == 0:
-            metric_values = metric_values.cpu().numpy()
-            reduced_metrics = {k: metric_values[i] for i, k in enumerate(metric_keys)}
-
-            # Postprocess
-            count = max(reduced_metrics["count"], 1)  # Avoid NaNs
-            reduced_metrics = {
-                f"train/{k}": v / (global_batch_size if k.endswith("loss") else count)
-                for k, v in reduced_metrics.items()
-            }
-
-            reduced_metrics["train/lr"] = lr_this_step
-            return reduced_metrics
-
-
-def evaluate(
-    config: PretrainConfig,
-    train_state: TrainState,
-    eval_loader: torch.utils.data.DataLoader,
-    eval_metadata: PuzzleDatasetMetadata,
-    evaluators: List[Any],
-    fabric: Fabric,
-    cpu_group: Optional[Any],
-):
-    """Evaluate model using Fabric for distributed communication."""
-    reduced_metrics = None
-
-    with torch.inference_mode():
-        return_keys = set(config.eval_save_outputs)
-        for evaluator in evaluators:
-            evaluator.begin_eval()
-            return_keys.update(evaluator.required_outputs)
-
-        # Run evaluation
-        set_ids = {k: idx for idx, k in enumerate(eval_metadata.sets)}
-
-        save_preds = {}
-
-        metric_keys = []
-        metric_values = None
-
-        carry = None
-        processed_batches = 0
-
-        for set_name, batch, global_batch_size in eval_loader:
-            processed_batches += 1
-            if fabric.global_rank == 0:
-                print(f"Processing batch {processed_batches}: {set_name}")
-
-            # To device
-            batch = {k: v.to(fabric.device) for k, v in batch.items()}
-            with torch.device(fabric.device):
-                carry = train_state.model.initial_carry(batch)  # type: ignore
-
-            # Forward
-            inference_steps = 0
-            while True:
-                carry, loss, metrics, preds, all_finish = train_state.model(
-                    carry=carry, batch=batch, return_keys=return_keys
-                )
-                inference_steps += 1
-
-                if all_finish:
-                    break
-
-            if fabric.global_rank == 0:
-                print(f"  Completed inference in {inference_steps} steps")
-
-            for collection in (batch, preds):
-                for k, v in collection.items():
-                    if k in config.eval_save_outputs:
-                        save_preds.setdefault(k, [])
-                        save_preds[k].append(
-                            v.cpu()
-                        )  # Move to CPU for saving GPU memory
-
-            for evaluator in evaluators:
-                evaluator.update_batch(batch, preds)
-
-            del carry, loss, preds, batch, all_finish
-
-            # Aggregate metrics
-            set_id = set_ids[set_name]
-
-            if metric_values is None:
-                metric_keys = list(
-                    sorted(metrics.keys())
-                )  # Sort keys to guarantee all processes use the same order.
-                metric_values = torch.zeros(
-                    (len(set_ids), len(metrics.values())),
-                    dtype=torch.float32,
-                    device=fabric.device,
-                )
-
-            metric_values[set_id] += torch.stack([metrics[k] for k in metric_keys])
-
-            del metrics
-
-        # concatenate save preds
-        save_preds = {k: torch.cat(v, dim=0) for k, v in save_preds.items()}
-
-        # Save preds
-        if config.checkpoint_path is not None and len(save_preds):
-            # Each rank save predictions independently
-            os.makedirs(os.path.dirname(config.checkpoint_path), exist_ok=True)
-            torch.save(
-                save_preds,
-                os.path.join(
-                    config.checkpoint_path,
-                    f"step_{train_state.step}_all_preds.{fabric.global_rank}",
-                ),
-            )
-
-        del save_preds
-
-        # Reduce to rank 0 using Fabric
-        if metric_values is not None:
-            if fabric.world_size > 1:
-                metric_values = fabric.all_reduce(metric_values, reduce_op="sum")
-
-            if fabric.global_rank == 0:
-                reduced_metrics = metric_values.cpu().numpy()
-                reduced_metrics = {
-                    set_name: {
-                        metric_name: reduced_metrics[set_id, metric_id]
-                        for metric_id, metric_name in enumerate(metric_keys)
-                    }
-                    for set_id, set_name in enumerate(set_ids)
-                }
-
-                # Postprocess
-                for set_name, m in reduced_metrics.items():
-                    count = m.pop("count")
-                    reduced_metrics[set_name] = {k: v / count for k, v in m.items()}
-
-        # Run evaluators
-        if fabric.global_rank == 0:
-            print(f"\nRunning {len(evaluators)} evaluator(s)...")
-
-        for i, evaluator in enumerate(evaluators):
-            if fabric.global_rank == 0:
-                print(
-                    f"Running evaluator {i + 1}/{len(evaluators)}: {evaluator.__class__.__name__}"
-                )
-
-            # Path for saving
-            evaluator_save_path = None
-            if config.checkpoint_path is not None:
-                evaluator_save_path = os.path.join(
-                    config.checkpoint_path,
-                    f"evaluator_{evaluator.__class__.__name__}_step_{train_state.step}",
-                )
-                os.makedirs(evaluator_save_path, exist_ok=True)
-
-            # Run and log
-            metrics = evaluator.result(
-                evaluator_save_path,
-                rank=fabric.global_rank,
-                world_size=fabric.world_size,
-                group=cpu_group,
-            )
-            if fabric.global_rank == 0 and metrics is not None:
-                if reduced_metrics is None:
-                    reduced_metrics = {}
-
-                reduced_metrics.update(metrics)
-                print(f"  Completed {evaluator.__class__.__name__}")
-
-        if fabric.global_rank == 0:
-            print("All evaluators completed!")
-
-    return reduced_metrics
-
-
-def save_code_and_config(config: PretrainConfig):
+def save_code_and_config(config: PretrainConfig) -> None:
     """Save code and config for reproducibility."""
     if config.checkpoint_path is None or wandb.run is None:
         return
@@ -666,7 +42,6 @@ def save_code_and_config(config: PretrainConfig):
     for code_file in code_list:
         if code_file is not None:
             code_name = os.path.basename(code_file)
-
             shutil.copy(code_file, os.path.join(config.checkpoint_path, code_name))
 
     # Dump config as yaml
@@ -706,35 +81,29 @@ def load_synced_config(hydra_config: DictConfig, fabric: Fabric) -> PretrainConf
 
 
 @hydra.main(config_path="config", config_name="cfg_pretrain", version_base=None)
-def launch(hydra_config: DictConfig):
+def launch(hydra_config: DictConfig) -> None:
     """Main training entry point using Fabric."""
 
     # Initialize Fabric
-    # Fabric automatically handles:
-    # - Device placement
-    # - Distributed initialization (NCCL backend)
-    # - World size and rank
     fabric = Fabric(
         accelerator="cuda",
-        devices="auto",  # Use all available GPUs
+        devices="auto",
         strategy=DDPStrategy(find_unused_parameters=False)
         if torch.cuda.device_count() > 1
         else "auto",
-        precision="32-true",  # Can be changed to "16-mixed" for mixed precision
+        precision="32-true",
     )
     fabric.launch()
 
-    # Create CPU process group for evaluators (Fabric doesn't handle this directly)
-    import torch.distributed as dist
-
-    CPU_PROCESS_GROUP = None
+    # Create CPU process group for evaluators
+    cpu_process_group = None
     if fabric.world_size > 1 and dist.is_initialized():
-        CPU_PROCESS_GROUP = dist.new_group(backend="gloo")
+        cpu_process_group = dist.new_group(backend="gloo")
 
     # Load sync'ed config
     config = load_synced_config(hydra_config, fabric)
 
-    # Seed RNGs to ensure consistency
+    # Seed RNGs
     fabric.seed_everything(config.seed + fabric.global_rank)
 
     # Dataset
@@ -755,6 +124,7 @@ def launch(hydra_config: DictConfig):
         epochs_per_iter=train_epochs_per_iter,
         global_batch_size=config.global_batch_size,
     )
+
     try:
         eval_loader, eval_metadata = create_dataloader(
             config,
@@ -780,6 +150,7 @@ def launch(hydra_config: DictConfig):
     # Progress bar and logger (rank 0 only)
     progress_bar = None
     ema_helper = None
+
     if fabric.global_rank == 0:
         progress_bar = tqdm.tqdm(total=train_state.total_steps)
         wandb.init(
@@ -787,7 +158,7 @@ def launch(hydra_config: DictConfig):
             name=config.run_name,
             config=config.model_dump(),
             settings=wandb.Settings(_disable_stats=True),
-        )  # type: ignore
+        )
         wandb.log(
             {"num_params": sum(x.numel() for x in train_state.model.parameters())},
             step=0,
@@ -800,7 +171,7 @@ def launch(hydra_config: DictConfig):
         ema_helper.register(train_state.model)
 
     # Early stopping
-    early_stopping_wrapper = EarlyStoppingWrapper(config)
+    early_stopping = EarlyStoppingWrapper(config)
     if config.early_stopping and fabric.global_rank == 0:
         print(
             f"Early stopping enabled: monitoring '{config.early_stopping_monitor}' "
@@ -808,41 +179,41 @@ def launch(hydra_config: DictConfig):
         )
 
     # Training Loop
-    for _iter_id in range(total_iters):
+    for iter_id in range(total_iters):
         fabric.print(
             f"[Rank {fabric.global_rank}, World Size {fabric.world_size}]: "
-            f"Epoch {_iter_id * train_epochs_per_iter}"
+            f"Epoch {iter_id * train_epochs_per_iter}"
         )
 
-        ############ Train Iter
+        # Train
         if fabric.global_rank == 0:
             print("TRAIN")
         train_state.model.train()
+
         for set_name, batch, global_batch_size in train_loader:
             metrics = train_batch(
-                config,
-                train_state,
-                batch,
-                global_batch_size,
-                fabric=fabric,
+                config, train_state, batch, global_batch_size, fabric=fabric
             )
 
             if fabric.global_rank == 0 and metrics is not None:
                 wandb.log(metrics, step=train_state.step)
-                progress_bar.update(train_state.step - progress_bar.n)  # type: ignore
+                progress_bar.update(train_state.step - progress_bar.n)
+
             if config.ema:
                 ema_helper.update(train_state.model)
 
-        if _iter_id >= config.min_eval_interval:
-            ############ Evaluation
+        # Evaluation
+        if iter_id >= config.min_eval_interval:
             if fabric.global_rank == 0:
                 print("EVALUATE")
+
             if config.ema:
                 print("SWITCH TO EMA")
                 train_state_eval = copy.deepcopy(train_state)
                 train_state_eval.model = ema_helper.ema_copy(train_state_eval.model)
             else:
                 train_state_eval = train_state
+
             train_state_eval.model.eval()
             metrics = evaluate(
                 config,
@@ -851,21 +222,21 @@ def launch(hydra_config: DictConfig):
                 eval_metadata,
                 evaluators,
                 fabric=fabric,
-                cpu_group=CPU_PROCESS_GROUP,
+                cpu_group=cpu_process_group,
             )
 
             if fabric.global_rank == 0 and metrics is not None:
                 wandb.log(metrics, step=train_state.step)
 
-            ############ Early Stopping Check (uses Fabric for broadcast)
-            should_stop = early_stopping_wrapper.check(metrics, fabric=fabric)
+            # Early stopping check
+            should_stop = early_stopping.check(metrics, fabric=fabric)
 
-            ############ Checkpointing
+            # Checkpointing
             if fabric.global_rank == 0:
                 print("SAVE CHECKPOINT")
             if fabric.global_rank == 0 and (
                 config.checkpoint_every_eval
-                or (_iter_id == total_iters - 1)
+                or (iter_id == total_iters - 1)
                 or should_stop
             ):
                 save_train_state(config, train_state_eval)
@@ -873,12 +244,12 @@ def launch(hydra_config: DictConfig):
             if config.ema:
                 del train_state_eval
 
-            ############ Early Stopping Exit
+            # Early stopping exit
             if should_stop:
                 if fabric.global_rank == 0:
                     print(
                         f"Early stopping: training stopped at epoch "
-                        f"{(_iter_id + 1) * train_epochs_per_iter}"
+                        f"{(iter_id + 1) * train_epochs_per_iter}"
                     )
                 break
 
