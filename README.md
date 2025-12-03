@@ -134,7 +134,7 @@ arch.H_cycles=3 arch.L_cycles=4 \
 ### Maze-Hard with fabric (assuming 8 L4 GPUs):
 
 ```bash
-run_name="pretrain_att_maze30x30"
+run_name="pretrain_att_maze30x30-25k-fabric"
 torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
 arch=trm \
 data_paths="[data/maze-30x30-hard-1k]" \
