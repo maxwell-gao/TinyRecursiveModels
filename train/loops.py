@@ -38,12 +38,12 @@ def train_batch(
     if train_state.step > train_state.total_steps:  # At most train_total_steps
         return None
 
-    # To device (Fabric handles device placement)
-    batch = {k: v.to(fabric.device) for k, v in batch.items()}
+    # To device (use .cuda() like original code for consistency)
+    batch = {k: v.cuda() for k, v in batch.items()}
 
     # Init carry if it is None
     if train_state.carry is None:
-        with torch.device(fabric.device):
+        with torch.device("cuda"):
             train_state.carry = train_state.model.initial_carry(batch)  # type: ignore
 
     # Forward
@@ -51,12 +51,10 @@ def train_batch(
         carry=train_state.carry, batch=batch, return_keys=[]
     )
 
-    # Backward with Fabric (handles gradient sync automatically for DDP-wrapped models)
-    # Note: Since we use custom optimizers, we do manual gradient sync here
-    scaled_loss = (1 / global_batch_size) * loss
-    fabric.backward(scaled_loss)
+    # Backward (same as original: scale then backward)
+    ((1 / global_batch_size) * loss).backward()
 
-    # Manual gradient sync (needed because model is not wrapped with fabric.setup())
+    # Allreduce gradients (same as original)
     if fabric.world_size > 1:
         for param in train_state.model.parameters():
             if param.grad is not None:
@@ -73,7 +71,7 @@ def train_batch(
         optim.step()
         optim.zero_grad()
 
-    # Reduce metrics
+    # Reduce metrics (use reduce to dst=0, not all_reduce)
     if len(metrics):
         assert not any(v.requires_grad for v in metrics.values())
 
@@ -83,7 +81,10 @@ def train_batch(
         # Reduce and reconstruct
         metric_values = torch.stack([metrics[k] for k in metric_keys])
         if fabric.world_size > 1:
-            metric_values = fabric.all_reduce(metric_values, reduce_op="sum")
+            # Use reduce to rank 0 only (like original dist.reduce)
+            import torch.distributed as dist
+
+            dist.reduce(metric_values, dst=0)
 
         if fabric.global_rank == 0:
             metric_values = metric_values.cpu().numpy()
@@ -126,6 +127,8 @@ def evaluate(
     Returns:
         Metrics dictionary (only on rank 0), or None
     """
+    import torch.distributed as dist
+
     reduced_metrics = None
 
     with torch.inference_mode():
@@ -150,9 +153,9 @@ def evaluate(
             if fabric.global_rank == 0:
                 print(f"Processing batch {processed_batches}: {set_name}")
 
-            # To device
-            batch = {k: v.to(fabric.device) for k, v in batch.items()}
-            with torch.device(fabric.device):
+            # To device (use .cuda() like original code)
+            batch = {k: v.cuda() for k, v in batch.items()}
+            with torch.device("cuda"):
                 carry = train_state.model.initial_carry(batch)  # type: ignore
 
             # Forward
@@ -192,7 +195,7 @@ def evaluate(
                 metric_values = torch.zeros(
                     (len(set_ids), len(metrics.values())),
                     dtype=torch.float32,
-                    device=fabric.device,
+                    device="cuda",
                 )
 
             metric_values[set_id] += torch.stack([metrics[k] for k in metric_keys])
@@ -216,10 +219,10 @@ def evaluate(
 
         del save_preds
 
-        # Reduce to rank 0 using Fabric
+        # Reduce to rank 0 (use dist.reduce like original, not all_reduce)
         if metric_values is not None:
             if fabric.world_size > 1:
-                metric_values = fabric.all_reduce(metric_values, reduce_op="sum")
+                dist.reduce(metric_values, dst=0)
 
             if fabric.global_rank == 0:
                 reduced_metrics = metric_values.cpu().numpy()

@@ -110,27 +110,31 @@ def create_model(
     model_cls = load_model_class(config.arch.name)
     loss_head_cls = load_model_class(config.arch.loss.name)
 
-    with fabric.init_module():
+    # Use torch.device("cuda") context like original code
+    with torch.device("cuda"):
         model: nn.Module = model_cls(model_cfg)
         print(model)
         model = loss_head_cls(model, **config.arch.loss.__pydantic_extra__)  # type: ignore
 
-    # Load checkpoint on rank 0
-    if fabric.global_rank == 0:
-        load_checkpoint(model, config)
+        # Compile model (inside cuda context like original)
+        if "DISABLE_COMPILE" not in os.environ:
+            model = torch.compile(model)  # type: ignore
 
-    # Broadcast parameters from rank 0 using Fabric
-    if fabric.world_size > 1:
-        with torch.no_grad():
-            for param in list(model.parameters()) + list(model.buffers()):
-                fabric.broadcast(param, src=0)
+        # Load checkpoint on rank 0
+        if fabric.global_rank == 0:
+            load_checkpoint(model, config)
 
-    # Compile model
-    if "DISABLE_COMPILE" not in os.environ:
-        model = torch.compile(model)  # type: ignore
+        # Broadcast parameters from rank 0 using Fabric
+        if fabric.world_size > 1:
+            with torch.no_grad():
+                for param in list(model.parameters()) + list(model.buffers()):
+                    fabric.broadcast(param, src=0)
+
+    # Get puzzle_emb_ndim from arch extra config (default to non-zero if not specified)
+    puzzle_emb_ndim = config.arch.__pydantic_extra__.get("puzzle_emb_ndim", 1)  # type: ignore
 
     # Optimizers and lr
-    if config.arch.puzzle_emb_ndim == 0:
+    if puzzle_emb_ndim == 0:
         optimizers = [
             AdamAtan2(
                 model.parameters(),
