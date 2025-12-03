@@ -18,6 +18,7 @@ import hydra
 import pydantic
 from omegaconf import DictConfig
 from adam_atan2_pytorch import AdamAtan2
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 from puzzle_dataset import PuzzleDataset, PuzzleDatasetConfig, PuzzleDatasetMetadata
 from utils.functions import load_model_class, get_model_source_path
@@ -84,6 +85,82 @@ class PretrainConfig(pydantic.BaseModel):
     freeze_weights: bool = (
         False  # If True, freeze weights and only learn the embeddings
     )
+
+    # Early stopping
+    early_stopping: bool = False  # Enable early stopping
+    early_stopping_monitor: str = "exact_accuracy"  # Metric to monitor
+    early_stopping_patience: int = 3  # Number of checks with no improvement
+    early_stopping_mode: str = "max"  # "min" or "max"
+    early_stopping_min_delta: float = 0.0  # Minimum change to qualify as improvement
+
+
+class EarlyStoppingWrapper:
+    """Wrapper to use Lightning's EarlyStopping in a non-Lightning training loop."""
+
+    def __init__(self, config: PretrainConfig):
+        self.enabled = config.early_stopping
+        if self.enabled:
+            self.callback = EarlyStopping(
+                monitor=config.early_stopping_monitor,
+                patience=config.early_stopping_patience,
+                mode=config.early_stopping_mode,
+                min_delta=config.early_stopping_min_delta,
+                verbose=True,
+                check_finite=True,
+            )
+            self.should_stop = False
+        else:
+            self.callback = None
+            self.should_stop = False
+
+    def check(self, metrics: dict, rank: int = 0) -> bool:
+        """
+        Check if training should stop based on the monitored metric.
+
+        Args:
+            metrics: Dictionary of metrics from evaluation
+            rank: Current process rank (only rank 0 should check)
+
+        Returns:
+            True if training should stop, False otherwise
+        """
+        if not self.enabled or self.callback is None or rank != 0:
+            return False
+
+        # Find the monitored metric in the metrics dict
+        monitor = self.callback.monitor
+        current = None
+
+        # Search for the metric in the nested metrics structure
+        for set_name, set_metrics in metrics.items():
+            if isinstance(set_metrics, dict):
+                if monitor in set_metrics:
+                    current = set_metrics[monitor]
+                    break
+            elif monitor in str(set_name):
+                current = set_metrics
+                break
+
+        if current is None:
+            print(f"Early stopping: metric '{monitor}' not found in metrics")
+            return False
+
+        # Convert to tensor if needed
+        if not isinstance(current, torch.Tensor):
+            current = torch.tensor(current)
+
+        # Use _evaluate_stopping_criteria which returns (should_stop, reason)
+        should_stop, reason = self.callback._evaluate_stopping_criteria(current)
+
+        if should_stop:
+            self.should_stop = True
+            print(
+                f"Early stopping triggered! "
+                f"Best {monitor}: {self.callback.best_score:.6f}, "
+                f"Reason: {reason}"
+            )
+
+        return self.should_stop
 
 
 @dataclass
@@ -711,6 +788,14 @@ def launch(hydra_config: DictConfig):
         ema_helper = EMAHelper(mu=config.ema_rate)
         ema_helper.register(train_state.model)
 
+    # Early stopping
+    early_stopping_wrapper = EarlyStoppingWrapper(config)
+    if config.early_stopping and RANK == 0:
+        print(
+            f"Early stopping enabled: monitoring '{config.early_stopping_monitor}' "
+            f"with patience={config.early_stopping_patience}, mode='{config.early_stopping_mode}'"
+        )
+
     # Training Loop
     for _iter_id in range(total_iters):
         print(
@@ -762,16 +847,36 @@ def launch(hydra_config: DictConfig):
             if RANK == 0 and metrics is not None:
                 wandb.log(metrics, step=train_state.step)
 
+            ############ Early Stopping Check
+            should_stop = early_stopping_wrapper.check(metrics, rank=RANK)
+            # Broadcast early stopping decision to all ranks
+            if WORLD_SIZE > 1:
+                should_stop_tensor = torch.tensor(
+                    [1 if should_stop else 0], dtype=torch.int32, device="cuda"
+                )
+                dist.broadcast(should_stop_tensor, src=0)
+                should_stop = should_stop_tensor.item() == 1
+
             ############ Checkpointing
             if RANK == 0:
                 print("SAVE CHECKPOINT")
             if RANK == 0 and (
-                config.checkpoint_every_eval or (_iter_id == total_iters - 1)
+                config.checkpoint_every_eval
+                or (_iter_id == total_iters - 1)
+                or should_stop
             ):
                 save_train_state(config, train_state_eval)
 
             if config.ema:
                 del train_state_eval
+
+            ############ Early Stopping Exit
+            if should_stop:
+                if RANK == 0:
+                    print(
+                        f"Early stopping: training stopped at epoch {(_iter_id + 1) * train_epochs_per_iter}"
+                    )
+                break
 
     # finalize
     if dist.is_initialized():
