@@ -52,6 +52,7 @@ class PretrainConfig(pydantic.BaseModel):
     weight_decay: float
     beta1: float
     beta2: float
+    grad_clip_norm: float = 1.0
 
     # Puzzle embedding
     puzzle_emb_lr: float

@@ -70,6 +70,9 @@ def train_batch(
         for param_group in optim.param_groups:
             param_group["lr"] = lr_this_step
 
+        if config.grad_clip_norm > 0.0:
+            fabric.clip_gradients(train_state.model, optim, max_norm=config.grad_clip_norm)
+
         optim.step()
         optim.zero_grad()
 
