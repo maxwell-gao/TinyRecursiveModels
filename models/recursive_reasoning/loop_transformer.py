@@ -39,6 +39,7 @@ class LoopTransformerCarry:
 class LoopStateConfig(BaseModel):
     name: str
     layers: int
+    share_weights_with: Optional[str] = None
 
 
 class LoopStageConfig(BaseModel):
@@ -181,8 +182,17 @@ class LoopTransformerInner(nn.Module):
         self.state_names = [state.name for state in config.states]
         self.state_modules = nn.ModuleDict()
         for state_cfg in config.states:
-            blocks = [LoopTransformerBlock(config) for _ in range(state_cfg.layers)]
-            self.state_modules[state_cfg.name] = LoopReasoningModule(blocks)
+            if state_cfg.share_weights_with is not None:
+                if state_cfg.share_weights_with not in self.state_modules:
+                    raise ValueError(
+                        f"State '{state_cfg.name}' references undefined share_weights_with="
+                        f"'{state_cfg.share_weights_with}'"
+                    )
+                module = self.state_modules[state_cfg.share_weights_with]
+            else:
+                blocks = [LoopTransformerBlock(config) for _ in range(state_cfg.layers)]
+                module = LoopReasoningModule(blocks)
+            self.state_modules[state_cfg.name] = module
 
             init = trunc_normal_init_(
                 torch.empty(config.hidden_size, dtype=self.forward_dtype), std=1
