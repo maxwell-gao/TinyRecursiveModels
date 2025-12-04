@@ -166,6 +166,19 @@ lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
 ```
 
+#### Clip Norms
+```bash
+run_name="pretrain_loop_trm_maze30x30-25k-fabric-loop-trm-fixedParams-clipnorm"
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
+arch=loop_transformer \
+data_paths="[data/maze-30x30-hard-1k]" \
+evaluators="[]" \
+epochs=25000 eval_interval=5000 \
+lr=5e-5 puzzle_emb_lr=5e-5 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
++run_name=${run_name} ema=True \
+early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
+```
+
 This configuration keeps the same model width ($512$ hidden units, $8$ heads, SwiGLU expansion $4$) while exposing multiple loop states (`z_H`, `z_L`) and a two-stage schedule (`z_L \leftarrow z_H + x`, then `z_H \leftarrow z_L`).
 
 ### Maze-Hard (Transformer Baseline ablation)
