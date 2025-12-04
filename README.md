@@ -155,7 +155,7 @@ early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accur
 $(H_{\text{cycles}}=3, L_{\text{cycles}}=4)$ reasoning schedule as TRM using the generalized loop reasoning block (`models/recursive_reasoning/loop_transformer.py`). To run the Maze pretraining recipe with this variant:
 
 ```bash
-run_name="pretrain_loop_trm_maze30x30-25k-fabric-loop-trm"
+run_name="pretrain_loop_trm_maze30x30-25k-fabric-loop-trm-fixedParams"
 torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
 arch=loop_transformer \
 data_paths="[data/maze-30x30-hard-1k]" \
