@@ -149,6 +149,44 @@ early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accur
 
 *Runtime:* < 12 hours (often less thanks to early stopping)
 
+### Maze-Hard (Loop Transformer TRM reproduction)
+
+`config/arch/loop_transformer.yaml` encodes the same \
+$(H_{\text{cycles}}=3, L_{\text{cycles}}=4)$ reasoning schedule as TRM using the generalized loop reasoning block (`models/recursive_reasoning/loop_transformer.py`). To run the Maze pretraining recipe with this variant:
+
+```bash
+run_name="pretrain_loop_trm_maze30x30-25k-fabric"
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
+arch=loop_transformer \
+data_paths="[data/maze-30x30-hard-1k]" \
+evaluators="[]" \
+epochs=25000 eval_interval=5000 \
+lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
++run_name=${run_name} ema=True \
+early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
+```
+
+This configuration keeps the same model width ($512$ hidden units, $8$ heads, SwiGLU expansion $4$) while exposing multiple loop states (`z_H`, `z_L`) and a two-stage schedule (`z_L \leftarrow z_H + x`, then `z_H \leftarrow z_L`).
+
+### Maze-Hard (Transformer Baseline ablation)
+
+To reproduce the single-level ACT transformer ablation in `models/recursive_reasoning/transformers_baseline.py`, switch to `config/arch/transformers_baseline.yaml`:
+
+```bash
+run_name="pretrain_baseline_maze30x30-25k-fabric"
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
+arch=transformers_baseline \
+data_paths="[data/maze-30x30-hard-1k]" \
+evaluators="[]" \
+epochs=25000 eval_interval=5000 \
+lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
+arch.H_layers=8 \
++run_name=${run_name} ema=True \
+early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
+```
+
+The baseline uses a single reasoning state (`z_H`), eight transformer blocks per ACT step, and the same optimizer/EMA/early-stopping settings as the TRM runs for a clean apples-to-apples comparison.
+
 ## Reference
 
 If you find our work useful, please consider citing:
