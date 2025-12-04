@@ -24,7 +24,7 @@ warmup_cycles: 2
 
 states:
   - name: z_H
-    layers: 0
+    layers: 1
   - name: z_L
     layers: 2
     share_weights_with: z_H
