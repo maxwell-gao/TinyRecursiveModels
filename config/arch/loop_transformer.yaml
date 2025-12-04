@@ -33,10 +33,10 @@ stages:
   - target: z_L
     sources: [z_H]
     include_inputs: true
-    repeat: 4
+    repeat: 6
   - target: z_H
     sources: [z_L]
-    repeat: 1
+    repeat: 3
 
 readout_state: z_H
 halt_state: z_H
