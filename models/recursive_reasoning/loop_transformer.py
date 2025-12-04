@@ -181,18 +181,20 @@ class LoopTransformerInner(nn.Module):
 
         self.state_names = [state.name for state in config.states]
         self.state_modules = nn.ModuleDict()
+        self._state_module_refs: Dict[str, LoopReasoningModule] = {}
         for state_cfg in config.states:
             if state_cfg.share_weights_with is not None:
-                if state_cfg.share_weights_with not in self.state_modules:
+                if state_cfg.share_weights_with not in self._state_module_refs:
                     raise ValueError(
                         f"State '{state_cfg.name}' references undefined share_weights_with="
                         f"'{state_cfg.share_weights_with}'"
                     )
-                module = self.state_modules[state_cfg.share_weights_with]
+                module = self._state_module_refs[state_cfg.share_weights_with]
             else:
                 blocks = [LoopTransformerBlock(config) for _ in range(state_cfg.layers)]
                 module = LoopReasoningModule(blocks)
-            self.state_modules[state_cfg.name] = module
+                self.state_modules[state_cfg.name] = module
+            self._state_module_refs[state_cfg.name] = module
 
             init = trunc_normal_init_(
                 torch.empty(config.hidden_size, dtype=self.forward_dtype), std=1
@@ -303,7 +305,7 @@ class LoopTransformerInner(nn.Module):
                 continue
             for _ in range(repeats):
                 injection = self._aggregate_sources(stage, states, input_embeddings)
-                module = self.state_modules[stage.target]
+                module = self._state_module_refs[stage.target]
                 states[stage.target] = module(
                     hidden_states=states[stage.target],
                     input_injection=injection,
