@@ -179,7 +179,7 @@ class LoopTransformerInner(nn.Module):
             raise NotImplementedError()
 
         self.state_names = [state.name for state in config.states]
-        self.state_modules: Dict[str, LoopReasoningModule] = {}
+        self.state_modules = nn.ModuleDict()
         for state_cfg in config.states:
             blocks = [LoopTransformerBlock(config) for _ in range(state_cfg.layers)]
             self.state_modules[state_cfg.name] = LoopReasoningModule(blocks)
