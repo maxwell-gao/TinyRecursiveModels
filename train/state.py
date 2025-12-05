@@ -203,8 +203,19 @@ def init_train_state(
     # Model
     model, optimizers, optimizer_lrs = create_model(config, train_metadata, fabric)
 
+    step = 0
+    if config.load_checkpoint:
+        try:
+            basename = os.path.basename(config.load_checkpoint)
+            if basename.startswith("step_"):
+                step = int(basename.split("_")[1])
+                if fabric.global_rank == 0:
+                    print(f"Resuming from step {step}")
+        except Exception:
+            pass
+
     return TrainState(
-        step=0,
+        step=step,
         total_steps=total_steps,
         model=model,
         optimizers=optimizers,
