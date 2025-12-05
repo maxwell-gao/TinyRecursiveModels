@@ -119,8 +119,6 @@ def get_muon_param_groups(model: nn.Module, config: PretrainConfig):
             lr=config.muon_lr,
             weight_decay=config.muon_weight_decay,
             momentum=config.muon_momentum,
-            nesterov=config.muon_nesterov,
-            ns_steps=config.muon_ns_steps,
         ),
         dict(
             params=other_params,
