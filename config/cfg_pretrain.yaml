@@ -35,6 +35,12 @@ grad_clip_norm: 0.7
 # Hyperparams - Puzzle embeddings training
 puzzle_emb_lr: 1e-2
 
+# Names
+run_name: null
+load_checkpoint: null
+checkpoint_path: null
+
+# Extras
 seed: 0
 min_eval_interval: 0 # when to start the eval
 
