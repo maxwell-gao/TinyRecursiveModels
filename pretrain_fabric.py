@@ -171,7 +171,7 @@ def launch(hydra_config: DictConfig) -> None:
     ema_helper = None
 
     if fabric.global_rank == 0:
-        progress_bar = tqdm.tqdm(total=train_state.total_steps)
+        progress_bar = tqdm.tqdm(total=train_state.total_steps, initial=train_state.step)
         wandb.init(
             project=config.project_name,
             name=config.run_name,
@@ -198,7 +198,10 @@ def launch(hydra_config: DictConfig) -> None:
         )
 
     # Training Loop
-    for iter_id in range(total_iters):
+    steps_per_epoch = train_state.total_steps / config.epochs
+    start_iter = int(train_state.step / steps_per_epoch / train_epochs_per_iter)
+
+    for iter_id in range(start_iter, total_iters):
         fabric.print(
             f"[Rank {fabric.global_rank}, World Size {fabric.world_size}]: "
             f"Epoch {iter_id * train_epochs_per_iter}"
