@@ -2,7 +2,7 @@
 Training state management: model creation, checkpointing, state initialization.
 """
 
-from typing import Any, Sequence
+from typing import Any, Sequence, Union
 from dataclasses import dataclass
 import os
 
@@ -10,6 +10,7 @@ import torch
 from torch import nn
 from lightning.fabric import Fabric
 from adam_atan2_pytorch import AdamAtan2
+from muon import MuonWithAuxAdam
 
 from train.config import PretrainConfig
 from puzzle_dataset import PuzzleDatasetMetadata
@@ -23,7 +24,7 @@ class TrainState:
 
     model: nn.Module
     optimizers: Sequence[torch.optim.Optimizer]
-    optimizer_lrs: Sequence[float]
+    optimizer_lrs: Sequence[Union[float, list[float]]]
     carry: Any
 
     step: int
@@ -81,6 +82,56 @@ def save_train_state(config: PretrainConfig, train_state: TrainState) -> None:
     )
 
 
+def get_muon_param_groups(model: nn.Module, config: PretrainConfig):
+    # model is ACTLossHead -> model.model -> model.model.inner
+    inner = model.model.inner
+
+    embed_params = set()
+    head_params = set()
+
+    # Embeddings
+    if hasattr(inner, "embed_tokens"):
+        embed_params.update(inner.embed_tokens.parameters())
+    if hasattr(inner, "embed_pos"):
+        embed_params.update(inner.embed_pos.parameters())
+
+    # Heads
+    if hasattr(inner, "lm_head"):
+        head_params.update(inner.lm_head.parameters())
+    if hasattr(inner, "q_head"):
+        head_params.update(inner.q_head.parameters())
+
+    hidden_weights = []
+    other_params = []
+
+    for p in model.parameters():
+        if p in embed_params or p in head_params:
+            other_params.append(p)
+        elif p.ndim >= 2:
+            hidden_weights.append(p)
+        else:
+            other_params.append(p)
+
+    return [
+        dict(
+            params=hidden_weights,
+            use_muon=True,
+            lr=config.muon_lr,
+            weight_decay=config.muon_weight_decay,
+            momentum=config.muon_momentum,
+            nesterov=config.muon_nesterov,
+            ns_steps=config.muon_ns_steps,
+        ),
+        dict(
+            params=other_params,
+            use_muon=False,
+            lr=config.lr,
+            betas=(config.beta1, config.beta2),
+            weight_decay=config.weight_decay,
+        ),
+    ]
+
+
 def create_model(
     config: PretrainConfig,
     train_metadata: PuzzleDatasetMetadata,
@@ -135,43 +186,37 @@ def create_model(
     # Get puzzle_emb_ndim from arch extra config (default to non-zero if not specified)
     puzzle_emb_ndim = config.arch.__pydantic_extra__.get("puzzle_emb_ndim", 1)  # type: ignore
 
-    # Optimizers and lr
-    if puzzle_emb_ndim == 0:
-        optimizers = [
-            AdamAtan2(
-                model.parameters(),
-                lr=0.0001,  # Needs to be set by scheduler
-                weight_decay=config.weight_decay,
-                betas=(config.beta1, config.beta2),
-            )
-        ]
-        optimizer_lrs = [config.lr]
-    elif config.freeze_weights:
-        optimizers = [
+    optimizers = []
+    optimizer_lrs = []
+
+    # 1. Puzzle Embedding Optimizer
+    if puzzle_emb_ndim > 0:
+        optimizers.append(
             CastedSparseEmbeddingSignSGD_Distributed(
                 model.model.puzzle_emb.buffers(),  # type: ignore
                 lr=0.0001,  # Needs to be set by scheduler
                 weight_decay=config.puzzle_emb_weight_decay,
                 world_size=fabric.world_size,
             )
-        ]
-        optimizer_lrs = [config.puzzle_emb_lr]
-    else:
-        optimizers = [
-            CastedSparseEmbeddingSignSGD_Distributed(
-                model.model.puzzle_emb.buffers(),  # type: ignore
-                lr=0.0001,  # Needs to be set by scheduler
-                weight_decay=config.puzzle_emb_weight_decay,
-                world_size=fabric.world_size,
-            ),
-            AdamAtan2(
-                model.parameters(),
-                lr=0.0001,  # Needs to be set by scheduler
-                weight_decay=config.weight_decay,
-                betas=(config.beta1, config.beta2),
-            ),
-        ]
-        optimizer_lrs = [config.puzzle_emb_lr, config.lr]
+        )
+        optimizer_lrs.append(config.puzzle_emb_lr)
+
+    # 2. Main Optimizer (if not frozen)
+    if not config.freeze_weights:
+        if config.optimizer == "muon":
+            param_groups = get_muon_param_groups(model, config)
+            optimizers.append(MuonWithAuxAdam(param_groups))
+            optimizer_lrs.append([config.muon_lr, config.lr])
+        else:
+            optimizers.append(
+                AdamAtan2(
+                    model.parameters(),
+                    lr=0.0001,  # Needs to be set by scheduler
+                    weight_decay=config.weight_decay,
+                    betas=(config.beta1, config.beta2),
+                )
+            )
+            optimizer_lrs.append(config.lr)
 
     return model, optimizers, optimizer_lrs
 

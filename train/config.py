@@ -53,6 +53,14 @@ class PretrainConfig(pydantic.BaseModel):
     beta1: float
     beta2: float
     grad_clip_norm: float = 1.0
+    optimizer: str = "adam_atan2"
+
+    # Muon
+    muon_lr: float = 0.002
+    muon_weight_decay: float = 0.01
+    muon_momentum: float = 0.95
+    muon_nesterov: bool = True
+    muon_ns_steps: int = 5
 
     # Puzzle embedding
     puzzle_emb_lr: float

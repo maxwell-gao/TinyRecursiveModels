@@ -100,9 +100,14 @@ def train_batch(
             for optim, base_lr in zip(
                 train_state.optimizers, train_state.optimizer_lrs
             ):
-                lr_this_step = compute_lr(base_lr, config, train_state)
-                for param_group in optim.param_groups:
-                    param_group["lr"] = lr_this_step
+                if isinstance(base_lr, list):
+                    for param_group, group_base_lr in zip(optim.param_groups, base_lr):
+                        lr_this_step = compute_lr(group_base_lr, config, train_state)
+                        param_group["lr"] = lr_this_step
+                else:
+                    lr_this_step = compute_lr(base_lr, config, train_state)
+                    for param_group in optim.param_groups:
+                        param_group["lr"] = lr_this_step
 
                 if config.grad_clip_norm > 0.0:
                     fabric.clip_gradients(
@@ -137,10 +142,14 @@ def train_batch(
         # Apply optimizer
         lr_this_step = None
         for optim, base_lr in zip(train_state.optimizers, train_state.optimizer_lrs):
-            lr_this_step = compute_lr(base_lr, config, train_state)
-
-            for param_group in optim.param_groups:
-                param_group["lr"] = lr_this_step
+            if isinstance(base_lr, list):
+                for param_group, group_base_lr in zip(optim.param_groups, base_lr):
+                    lr_this_step = compute_lr(group_base_lr, config, train_state)
+                    param_group["lr"] = lr_this_step
+            else:
+                lr_this_step = compute_lr(base_lr, config, train_state)
+                for param_group in optim.param_groups:
+                    param_group["lr"] = lr_this_step
 
             if config.grad_clip_norm > 0.0:
                 fabric.clip_gradients(
