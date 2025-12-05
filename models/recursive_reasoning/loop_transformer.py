@@ -64,6 +64,7 @@ class LoopTransformerConfig(BaseModel):
     forward_dtype: str = "bfloat16"
     rms_norm_eps: float = 1e-5
     rope_theta: float = 10000.0
+    dropout: float = 0.0
 
     puzzle_emb_ndim: int = 0
     puzzle_emb_len: Optional[int] = None
@@ -93,20 +94,25 @@ class LoopTransformerBlock(nn.Module):
             num_heads=config.num_heads,
             num_key_value_heads=config.num_heads,
             causal=False,
+            dropout=config.dropout,
         )
         self.mlp = SwiGLU(hidden_size=config.hidden_size, expansion=config.expansion)
         self.norm_eps = config.rms_norm_eps
+        self.dropout = nn.Dropout(config.dropout)
 
     def forward(
         self, cos_sin: Optional[CosSin], hidden_states: torch.Tensor
     ) -> torch.Tensor:
         hidden_states = rms_norm(
             hidden_states
-            + self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states),
+            + self.dropout(
+                self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states)
+            ),
             variance_epsilon=self.norm_eps,
         )
         hidden_states = rms_norm(
-            hidden_states + self.mlp(hidden_states), variance_epsilon=self.norm_eps
+            hidden_states + self.dropout(self.mlp(hidden_states)),
+            variance_epsilon=self.norm_eps,
         )
         return hidden_states
 

@@ -60,6 +60,7 @@ class TinyRecursiveReasoningModel_ACTV1Config(BaseModel):
 
     rms_norm_eps: float = 1e-5
     rope_theta: float = 10000.0
+    dropout: float = 0.0
 
     # Halting Q-learning config
     halt_max_steps: int
@@ -95,12 +96,14 @@ class TinyRecursiveReasoningModel_ACTV1Block(nn.Module):
                 num_heads=config.num_heads,
                 num_key_value_heads=config.num_heads,
                 causal=False,
+                dropout=config.dropout,
             )
         self.mlp = SwiGLU(
             hidden_size=config.hidden_size,
             expansion=config.expansion,
         )
         self.norm_eps = config.rms_norm_eps
+        self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, cos_sin: CosSin, hidden_states: torch.Tensor) -> torch.Tensor:
         # B, L, D = hidden_states.shape
@@ -109,19 +112,23 @@ class TinyRecursiveReasoningModel_ACTV1Block(nn.Module):
             hidden_states = hidden_states.transpose(1, 2)
             out = self.mlp_t(hidden_states)
             hidden_states = rms_norm(
-                hidden_states + out, variance_epsilon=self.norm_eps
+                hidden_states + self.dropout(out), variance_epsilon=self.norm_eps
             )
             hidden_states = hidden_states.transpose(1, 2)
         else:
             # Self Attention
             hidden_states = rms_norm(
                 hidden_states
-                + self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states),
+                + self.dropout(
+                    self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states)
+                ),
                 variance_epsilon=self.norm_eps,
             )
         # Fully Connected
         out = self.mlp(hidden_states)
-        hidden_states = rms_norm(hidden_states + out, variance_epsilon=self.norm_eps)
+        hidden_states = rms_norm(
+            hidden_states + self.dropout(out), variance_epsilon=self.norm_eps
+        )
         return hidden_states
 
 

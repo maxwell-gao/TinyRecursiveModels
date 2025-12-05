@@ -109,7 +109,13 @@ class RotaryEmbedding(nn.Module):
 
 class Attention(nn.Module):
     def __init__(
-        self, hidden_size, head_dim, num_heads, num_key_value_heads, causal=False
+        self,
+        hidden_size,
+        head_dim,
+        num_heads,
+        num_key_value_heads,
+        causal=False,
+        dropout=0.0,
     ):
         super().__init__()
 
@@ -119,6 +125,7 @@ class Attention(nn.Module):
         self.num_heads = num_heads
         self.num_key_value_heads = num_key_value_heads
         self.causal = causal
+        self.dropout = dropout
 
         self.qkv_proj = CastedLinear(
             self.hidden_size,
@@ -154,7 +161,11 @@ class Attention(nn.Module):
             lambda t: einops.rearrange(t, "B S H D -> B H S D"), (query, key, value)
         )  # needed for scaled_dot_product_attention but not flash_attn_func
         attn_output = scaled_dot_product_attention(
-            query=query, key=key, value=value, is_causal=self.causal
+            query=query,
+            key=key,
+            value=value,
+            is_causal=self.causal,
+            dropout_p=self.dropout if self.training else 0.0,
         )
         attn_output = einops.rearrange(attn_output, "B H S D -> B S H D")
         attn_output = attn_output.view(batch_size, seq_len, self.output_size)  # type: ignore
