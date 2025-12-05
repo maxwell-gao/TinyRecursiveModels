@@ -85,11 +85,11 @@ arch.H_cycles=3 arch.L_cycles=4 \
 
 *Runtime:* ~3 days
 
-### Sudoku-Extreme (assuming 1 L40S GPU):
+### Sudoku-Extreme (assuming 8 L4 GPUs):
 
 ```bash
 run_name="pretrain_mlp_t_sudoku"
-python pretrain.py \
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain.py \
 arch=trm \
 data_paths="[data/sudoku-extreme-1k-aug-1000]" \
 evaluators="[]" \
@@ -101,7 +101,7 @@ arch.H_cycles=3 arch.L_cycles=6 \
 +run_name=${run_name} ema=True
 
 run_name="pretrain_att_sudoku"
-python pretrain.py \
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain.py \
 arch=trm \
 data_paths="[data/sudoku-extreme-1k-aug-1000]" \
 evaluators="[]" \
@@ -112,13 +112,13 @@ arch.H_cycles=3 arch.L_cycles=6 \
 +run_name=${run_name} ema=True
 ```
 
-*Runtime:* < 36 hours
+*Runtime:* < 3 hours
 
-### Maze-Hard (assuming 4 L40S GPUs):
+### Maze-Hard (assuming 8 L4 GPUs):
 
 ```bash
 run_name="pretrain_att_maze30x30"
-torchrun --nproc-per-node 4 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain.py \
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain.py \
 arch=trm \
 data_paths="[data/maze-30x30-hard-1k]" \
 evaluators="[]" \
