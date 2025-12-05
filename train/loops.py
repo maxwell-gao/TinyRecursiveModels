@@ -12,6 +12,8 @@ from train.config import PretrainConfig
 from train.state import TrainState
 from train.schedulers import compute_lr
 from puzzle_dataset import PuzzleDatasetMetadata
+from train.dis_utils import get_dis_target
+from models.losses import IGNORE_LABEL_ID
 
 
 def train_batch(
@@ -41,40 +43,112 @@ def train_batch(
     # To device (use .cuda() like original code for consistency)
     batch = {k: v.cuda() for k, v in batch.items()}
 
-    # Init carry if it is None
-    if train_state.carry is None:
+    # Check for DIS
+    model_ref = train_state.model
+    if hasattr(model_ref, "model"):  # ACTLossHead
+        model_ref = model_ref.model
+    if hasattr(model_ref, "_orig_mod"):  # torch.compile
+        model_ref = model_ref._orig_mod
+
+    dis_enabled = getattr(model_ref.config, "dis_enabled", False)
+
+    if dis_enabled:
+        # DIS Loop
+        dis_max_steps = model_ref.config.dis_max_steps
+        dis_schedule = model_ref.config.dis_schedule
+        vocab_size = model_ref.config.vocab_size
+
+        # Always init carry for DIS to start fresh
         with torch.device("cuda"):
-            train_state.carry = train_state.model.initial_carry(batch)  # type: ignore
+            train_state.carry = train_state.model.initial_carry(batch)
 
-    # Forward
-    train_state.carry, loss, metrics, _, _ = train_state.model(
-        carry=train_state.carry, batch=batch, return_keys=[]
-    )
+        metrics = {}
 
-    # Backward (same as original: scale then backward)
-    ((1 / global_batch_size) * loss).backward()
+        for step in range(dis_max_steps):
+            # Generate target
+            y_true = batch["labels"]
+            y_target = get_dis_target(
+                y_true,
+                step,
+                dis_max_steps,
+                vocab_size,
+                vocab_size - 1,  # mask_token_id is the last token
+                IGNORE_LABEL_ID,
+                dis_schedule,
+            )
 
-    # Allreduce gradients (same as original)
-    if fabric.world_size > 1:
-        for param in train_state.model.parameters():
-            if param.grad is not None:
-                # Fabric all_reduce is not in-place, unlike torch.distributed.all_reduce
-                reduced_grad = fabric.all_reduce(param.grad, reduce_op="sum")
-                param.grad.data.copy_(reduced_grad)
+            batch_step = batch.copy()
+            batch_step["labels"] = y_target
 
-    # Apply optimizer
-    lr_this_step = None
-    for optim, base_lr in zip(train_state.optimizers, train_state.optimizer_lrs):
-        lr_this_step = compute_lr(base_lr, config, train_state)
+            # Forward
+            train_state.carry, loss, metrics, _, _ = train_state.model(
+                carry=train_state.carry, batch=batch_step, return_keys=[], step=step
+            )
 
-        for param_group in optim.param_groups:
-            param_group["lr"] = lr_this_step
+            # Backward
+            ((1 / global_batch_size) * loss).backward()
 
-        if config.grad_clip_norm > 0.0:
-            fabric.clip_gradients(train_state.model, optim, max_norm=config.grad_clip_norm)
+            # Allreduce
+            if fabric.world_size > 1:
+                for param in train_state.model.parameters():
+                    if param.grad is not None:
+                        reduced_grad = fabric.all_reduce(param.grad, reduce_op="sum")
+                        param.grad.data.copy_(reduced_grad)
 
-        optim.step()
-        optim.zero_grad()
+            # Optimizer
+            lr_this_step = None
+            for optim, base_lr in zip(
+                train_state.optimizers, train_state.optimizer_lrs
+            ):
+                lr_this_step = compute_lr(base_lr, config, train_state)
+                for param_group in optim.param_groups:
+                    param_group["lr"] = lr_this_step
+
+                if config.grad_clip_norm > 0.0:
+                    fabric.clip_gradients(
+                        train_state.model, optim, max_norm=config.grad_clip_norm
+                    )
+
+                optim.step()
+                optim.zero_grad()
+
+    else:
+        # Init carry if it is None
+        if train_state.carry is None:
+            with torch.device("cuda"):
+                train_state.carry = train_state.model.initial_carry(batch)  # type: ignore
+
+        # Forward
+        train_state.carry, loss, metrics, _, _ = train_state.model(
+            carry=train_state.carry, batch=batch, return_keys=[]
+        )
+
+        # Backward (same as original: scale then backward)
+        ((1 / global_batch_size) * loss).backward()
+
+        # Allreduce gradients (same as original)
+        if fabric.world_size > 1:
+            for param in train_state.model.parameters():
+                if param.grad is not None:
+                    # Fabric all_reduce is not in-place, unlike torch.distributed.all_reduce
+                    reduced_grad = fabric.all_reduce(param.grad, reduce_op="sum")
+                    param.grad.data.copy_(reduced_grad)
+
+        # Apply optimizer
+        lr_this_step = None
+        for optim, base_lr in zip(train_state.optimizers, train_state.optimizer_lrs):
+            lr_this_step = compute_lr(base_lr, config, train_state)
+
+            for param_group in optim.param_groups:
+                param_group["lr"] = lr_this_step
+
+            if config.grad_clip_norm > 0.0:
+                fabric.clip_gradients(
+                    train_state.model, optim, max_norm=config.grad_clip_norm
+                )
+
+            optim.step()
+            optim.zero_grad()
 
     # Reduce metrics (use reduce to dst=0, not all_reduce)
     if len(metrics):

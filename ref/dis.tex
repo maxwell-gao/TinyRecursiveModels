@@ -1,0 +1,1207 @@
+%%%%%%%% ICML 2026 EXAMPLE LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+
+% Recommended, but optional, packages for figures and better typesetting:
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs} % for professional tables
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb} 
+\usepackage{algorithm}
+%\usepackage{algpseudocode}
+\usepackage{mathtools}
+\usepackage{wrapfig}
+\usepackage[table]{xcolor}
+
+
+
+\usepackage{xcolor}      % For defining colors
+\usepackage{listings}    % For the code block
+
+% --- Define colors to match your image ---
+\definecolor{codeblue}{rgb}{0.8, 0.2, 0.2} % A nice blue for keywords
+\definecolor{codegray}{rgb}{0.5, 0.5, 0.5}   % Gray for comments
+
+% --- Configure the 'listings' style ---
+\lstset{
+  language=Python,                % Set the language
+  basicstyle=\ttfamily\small,     % Use a small monospaced font
+  keywordstyle=\color{codeblue}\bfseries, % Keywords are blue and bold
+  commentstyle=\color{codegray},    % Comments are gray
+  stringstyle=\color{red},        % Strings are red (none in this example)
+  showstringspaces=false,         % Don't show special space characters
+  numbers=none,                   % No line numbers, like your image
+  frame=none,                     % No frame around the code
+  tabsize=4,                      % Set tab spacing
+  breaklines=true                 % Automatically break long lines
+}
+
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=red,
+    citecolor=red,
+    urlcolor=red
+}
+
+% hyperref makes hyperlinks in the resulting PDF.
+% If your build breaks (sometimes temporarily if a hyperlink spans a page)
+% please comment out the following usepackage line and replace
+% \usepackage{icml2026} with \usepackage[nohyperref]{icml2026} above.
+%\usepackage{hyperref}
+
+
+% Attempt to make hyperref and algorithmic work together better:
+% \newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+% Use the following line for the initial blind version submitted for review:
+%\usepackage{icml2026}
+
+% For preprint, use
+\usepackage[preprint]{icml2026}
+
+% If accepted, instead use the following line for the camera-ready submission:
+% \usepackage[accepted]{icml2026}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+
+
+% if you use cleveref..
+\usepackage[capitalize,noabbrev]{cleveref}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THEOREMS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% Todonotes is useful during development; simply uncomment the next line
+%    and comment out the line below the next line to turn off comments
+%\usepackage[disable,textsize=tiny]{todonotes}
+\usepackage[textsize=tiny]{todonotes}
+
+% The \icmltitle you define below is probably too long as a header.
+% Therefore, a short form for the running title is supplied here:
+\icmltitlerunning{Submission and Formatting Instructions for ICML 2026}
+
+\begin{document}
+
+\twocolumn[
+  \icmltitle{Deep Improvement Supervision}
+
+  % It is OKAY to include author information, even for blind submissions: the
+  % style file will automatically remove it for you unless you've provided
+  % the [accepted] option to the icml2026 package.
+
+  % List of affiliations: The first argument should be a (short) identifier you
+  % will use later to specify author affiliations Academic affiliations
+  % should list Department, University, City, Region, Country Industry
+  % affiliations should list Company, City, Region, Country
+
+  % You can specify symbols, otherwise they are numbered in order. Ideally, you
+  % should not use this facility. Affiliations will be numbered in order of
+  % appearance and this is the preferred way.
+  \icmlsetsymbol{equal}{*}
+
+  \begin{icmlauthorlist}
+    \icmlauthor{Arip Asadulaev}{yyy}
+    \icmlauthor{Rayan Banerjee}{yyy}
+    \icmlauthor{Fakhri Karray}{yyy}
+    \icmlauthor{Martin Takac}{yyy}
+    %\icmlauthor{}{sch}
+    %\icmlauthor{}{sch}
+    %\icmlauthor{}{sch}
+  \end{icmlauthorlist}
+
+  \icmlaffiliation{yyy}{MBZUAI}
+  %\icmlaffiliation{comp}{Company Name, Location, Country}
+  %\icmlaffiliation{sch}{School of ZZZ, Institute of WWW, Location, Country}
+
+  \icmlcorrespondingauthor{Arip Asadulaev}{arip.asadulaev@mbzuai.ac.ae}
+  %\icmlcorrespondingauthor{Firstname2 Lastname2}{first2.last2@www.uk}
+
+  % You may provide any keywords that you find helpful for describing your
+  % paper; these are used to populate the "keywords" metadata in the PDF but
+  % will not be shown in the document
+  \icmlkeywords{Machine Learning, ICML}
+
+  \vskip 0.3in
+]
+
+% this must go after the closing bracket ] following \twocolumn[ ...
+
+% This command actually creates the footnote in the first column listing the
+% affiliations and the copyright notice. The command takes one argument, which
+% is text to display at the start of the footnote. The \icmlEqualContribution
+% command is standard text for equal contribution. Remove it (just {}) if you
+% do not need this facility.
+
+% Use ONE of the following lines. DO NOT remove the command.
+% If you have no special notice, KEEP empty braces:
+\printAffiliationsAndNotice{}  % no special notice (required even if empty)
+% Or, if applicable, use the standard equal contribution text:
+% \printAffiliationsAndNotice{\icmlEqualContribution}
+
+\begin{abstract}
+Recently, it was shown that small, looped architectures, such as Tiny Recursive Models (TRMs), can outperform Large Language Models (LLMs) on complex reasoning tasks, including the Abstraction and Reasoning Corpus (\texttt{ARC}). In this work, we investigate a core question: how can we further improve the efficiency of these methods with minimal changes? To address this, we frame the latent reasoning of TRMs as a form of classifier-free guidance and implicit policy improvement algorithm. Building on these insights, we propose a novel training scheme that provides a target for each loop during training. We demonstrate that our approach significantly enhances training efficiency. Our method reduces the total number of forward passes by 18× and eliminates halting mechanisms, while maintaining quality comparable to standard TRMs. Notably, we achieve 24$\%$ accuracy on ARC-1 with only 0.8M parameters, outperforming most LLMs.
+\end{abstract}
+
+\vspace{-5mm}
+\section{Introduction}
+\label{sec:intro}
+The goal of reasoning models is to start from a set of specific examples or observations and infer a general rule or pattern. Such models systematically manipulate and connect pieces of information to infer new conclusions and solve problems not explicitly stated in the training data. Building such models is a key challenge for current machine learning approaches. The use of iterative refinement loops on a model's outputs has become a major driver of progress in deep learning reasoning, a trend evident in both small and large-scale architectures.
+
+At a high level, the reasoning process in large language models (LLMs) can be viewed as a product of this same principle: a recursive, loop-like refinement of the model's own outputs \cite{hurst2024gpt, jaech2024openai}. Their primary reasoning mechanism, Chain-of-Thought (CoT) prompting \cite{wei2022chain}, relies on externalizing reasoning into a sequence of generated text steps. However, this process in LLMs demands extensive computational infrastructure, making it highly expensive.
+
+\begin{figure}[t!]
+    \includegraphics[width=0.99\linewidth]{images/corruption_4.png}
+    \caption{Blueprint of the discrete diffusion process on the \texttt{ARC}. Starting from the input x, following timestep $t$, we generate  diffusion steps to the target y \cite{chollet2019measure}.}
+    \label{fig:teaser}
+    \vspace{-4mm}
+\end{figure}
+For smaller models, this idea is also proved itself, looped transformers \cite{giannou2023looped, yang2023looped} repeatedly apply the same transformer block with input injection at each step and achieve better performance than a standard one forward pass transformer on reasoning and meta learning tasks, why using 10x less number of parameters \cite{yang2023looped}. 
+
+Recently, models like Hierarchical Reasoning Models (HRM) \cite{wang2025hierarchical} and Tiny Recursive Models (TRM) \cite{jolicoeur2025less}, was built on the similar idea of reusing model output repeatedly in both the input and latent spaces. These models have demonstrated very impressive performance and even outperformed multi-billion parameter LLM models on complicated \texttt{ARC-AGI} \cite{chollet2019measure} tasks.
+However, a path of building reasoning models based on looped inference introduces a profound question.  When a reasoning model executes a refinement step, what guaranties that it is on a path to a better answer? \textit{How can we guide the model to ensure that each step is verifiably closer to the right conclusion?} 
+
+In this paper, we propose a learning algorithm that makes the reasoning process more task-oriented. Our main finding is that guiding the model to predict intermediate steps via discrete diffusion (see Fig. \ref{fig:teaser}) during iterative reasoning significantly reduces training complexity and improves generalization. We demonstrate that, with a target for each supervision step, the \texttt{no-grad} cycles proposed for TRM and HRM can be avoided. Additionally, by performing a fixed number of refinement steps, we simplify training because the need to halt is eliminated. 
+
+To formalize our approach and hypotheses regarding the efficacy of TRMs, we first model the latent reasoning process through distinct theoretical lenses, establishing a tractable and well-defined formulation. Specifically, we show that a TRM can be interpreted as a form of classifier-free diffusion guidance (Sec. \ref{sec:trm_cfg}). Furthermore, we demonstrate how asymmetric latent reasoning facilitates policy improvement that exceeds the policy inherent in the training data \cite{frans2025diffusion} (Sec. \ref{sec:trm_pi}). Finally, based on this formulation, we theoretically justify the benefits of step-wise guidance.
+
+Our method achieves state-of-the-art performance on complex reasoning benchmarks, including \texttt{ARC-AGI 1, ARC-AGI 2}, using a much simpler architecture than the TRM. We avoid training the halting step module, use 3x fewer supervision steps and 8x fewer latent reasoning steps. As a highlight of our method, our model achieves a 24$\%$ accuracy on \texttt{ARC-AGI-1} outperform most of the existing open source LLM models without any external knowledge. 
+
+\section{Background}
+\subsection{Hierarchical Reasoning Models}
+\label{sec:hrm}
+A looped~\cite{giannou2023looped} and universal~\cite{dehghani2018universal} transformers repeatedly applies the same transformer block, with input injection each time, and is trained to make its intermediate loop output correct. This model was applied for the various tasks, showing the improvement over the single step models~\cite{yang2023looped}. Based on this idea, Hierarchical Reasoning Models (HRMs) \cite{wang2025hierarchical} are supervised sequence-to-sequence models that perform \emph{recursive refinement} of a prediction by interleaving two small recurrent networks that operate at different update frequencies. Let $\tilde{\mathbf{x}}\in\mathcal{V}^{L}$ denote an input sequence of length $L$ on a vocabulary $\mathcal{V}$, and let $\mathbf{y}\in\mathcal{V}^{L}$ be the desired output. HRM uses an input embedding $f_I$, two recurrent reasoning modules a \emph{low-level} module $f_L$ and a \emph{high-level} module $f_H$ and an output head $f_O$. After embedding $\mathbf{x}=f_I(\tilde{\mathbf{x}})\in\mathbb{R}^{L\times D}$, HRM carries two latent states $\mathbf{z}_L, \mathbf{z}_H\in\mathbb{R}^{L\times D}$ through the supervision steps. Within a forward pass, it performs $n$ updates of $f^{\phi}_L$ for every update of $f^{\psi}_H$ and repeats this $T$ times before decoding with $f_O$. A typical schedule used in previous work is $n=2$ and $T=2$. The final prediction is $\hat{\mathbf{y}}=\operatorname*{arg\,max} f_O(\mathbf{z}_H)$. During a forward pass, HRM evaluates the following updates:\vspace{-0.15em} 
+\begin{align}
+\label{eq:hrm}
+\mathbf{z}^{n+1}_L &\leftarrow f^{\phi}_L((\mathbf{z}^{n}_L + \mathbf{x})+ \mathbf{z}^{n}_H),\quad \text{(repeated $n$ times)} \\\nonumber
+\mathbf{z}^{n+1}_H &\leftarrow f^{\psi}_H(\mathbf{z}^{n+1}_L + \mathbf{z}^{n}_H), \\\nonumber
+\hat{\mathbf{y}} &= \operatorname*{arg\,max} f_O(\mathbf{z}_H).
+\end{align}
+Most evaluations in the early part of the schedule are executed without gradient tracking, while the final evaluations are backpropagated through. This design aims to amortize compute while allowing the model to refine internal states before a gradient-bearing step. 
+
+\textbf{Deep supervision.} To emulate very deep computation without prohibitive memory, HRM reuses $(\mathbf{z}_L,\mathbf{z}_H)$ across $N_{\text{sup}}$ supervision steps up to 16, detaching the states between steps. This \textit{deep supervision} improves the answer iteratively and yields hundreds of effective layers, while avoiding full backpropagation over time.  
+
+\textbf{Adaptive Computational Time.} Training-time efficiency is improved by a learned halting mechanism (ACT). A small head predicts whether to stop iterating on the current example or continue; the published implementation trains this with a halting loss and an additional continue loss that requires an \emph{extra} forward pass, effectively doubling forward compute per optimization step \cite{graves2016act}. The test-time evaluation runs a fixed maximum number of supervision steps to maximize accuracy. 
+
+
+
+% ---------------------------------------------------------------
+
+\subsection{Tiny Recursive Models}
+\label{sec:trm}
+Tiny Recursive Models \cite{jolicoeur2025less} retain the core idea of iterative refinement but collapse HRM’s complexity into a \emph{single} tiny network and a simpler recursion scheme. In the TRM setup, $\mathbf{z}_H$ is the state that the model reads out to produce the answer (the output head is applied to $\mathbf{z}_H$: $\hat{\mathbf{y}} = \arg\max f_O(\mathbf{z}_H)$). $\mathbf{z}_L$ is a \emph{working memory} state that's updated using the input $\mathbf{x}$ and the current answer, and is then used to update $\mathbf{z}_H$. Because the loss is applied on the prediction from $\mathbf{z}_H$, optimization pressure makes $\mathbf{z}_H$ look like (encode) the current solution. On the other hand, $\mathbf{z}_L$ is only supervised indirectly through its effect on $\mathbf{z}_H$, so it is free to be an internal reasoning representation rather than a decodable solution. Within same $f^{\phi}$ network for $L$ and $H$ module, TRM repeats each recursion equal to HRM Eq. \ref{eq:hrm}.
+% \begin{align}
+% \mathbf{z}^{n+1}_L &\leftarrow f^{\phi}_L((\mathbf{z}^{n}_L + \mathbf{x})+ \mathbf{z}^{n}_H),\quad \text{(repeated $n$ times)} \\\nonumber
+% \mathbf{z}^{n+1}_H &\leftarrow f^{\phi}_H(\mathbf{z}^{n+1}_L + \mathbf{z}^{n}_H), \\\nonumber
+% \hat{\mathbf{y}} &= \operatorname*{arg\,max} f_O(\mathbf{z}_H).
+% \end{align}
+
+The prediction is made from $\mathbf{z}_H$ through the output head and trained with cross-entropy. This asymmetry (only $\mathbf{z}_H$ sees final $\mathbf{z}^{n+1}_L$; and only $\mathbf{z}_H$ is decoded and penalized) naturally pushes $\mathbf{z}_H$ towards the space of valid answers, while $\mathbf{z}_L$ becomes the latent \emph{reasoning scratchpad} that helps improve the next $\mathbf{z}_H$. The TRM paper explicitly reframes this: "$\mathbf{z}_H$ is simply the current (embedded) solution... $\mathbf{z}_L$ is a latent feature that does not directly correspond to a solution but can be transformed into one by $f_H$. It was show on the Sudoku example that when you \texttt{reverse-embed + argmax}, the tokenized $\mathbf{z}_H$ looks like the solved grid, while tokenized $\mathbf{z}_L$ is not realted to the solution.
+
+From the notation perspective, we want to note that TRM renames $\mathbf{z}_H$ to $\mathbf{y}$ (the running answer) and $\mathbf{z}_L$ to $\mathbf{z}$ (latent reasoning). The loop becomes: update $\mathbf{z}$ using $(\mathbf{x}, \mathbf{y}, \mathbf{z})$; then update $\mathbf{y}$ using $(\mathbf{y}, \mathbf{z})$. Carrying both across deep-supervision steps lets the model iterate: $\mathbf{z}$ remembers how it got to the current guess (like a chain-of-thought), and $\mathbf{y}$ stores the current guess itself. TRM trains a \emph{single} halting probability via binary cross-entropy against correctness. Let $\mathcal{L}_{\text{task}}=\mathrm{CE}(f_O(\mathbf{y}), \mathbf{y}_{\text{true}})$ be the prediction cross-entropy loss and $\mathcal{L}_{\text{halt}}=\mathrm{BCE}(q(\mathbf{y}), \hat{\mathbf{y}}=\mathbf{y}_{\text{true}})$ the halting loss with $q(\cdot)$ a scalar head. An optimization step iterates up to $N_{\text{sup}}$ supervision steps, performing $T-1$ no-grad recursion cycles, then one with gradients, detaching $(\mathbf{y},\mathbf{z})$ between supervision steps. Early stopping within a minibatch is permitted by using the halting signal. 
+
+
+\subsection{Diffusion Guidance as Policy Improvement}
+\label{sec:bg-cfgrl}
+We use the policy improvement point of view to describe the latent reasoning process of TRM. For clarity, we provide a short background section below. 
+
+Recent work formalizes a tight connection between \emph{classifier-free guidance} (CFG) in diffusion/flow models and \emph{policy improvement} in reinforcement learning (RL) \cite{frans2025diffusion}. This work provides a framework for the analysis of diffusion models as RL methods. For a state $\mathbf{s}$ and an action/output $\mathbf{y}$, the core construction, termed classifier-free guidance RL (CFGRL), parameterizes a target policy as:
+\begin{equation}
+\pi(y\mid \mathbf{s})\;\propto\;\hat{\pi}(y\mid \mathbf{s})\;f\!\big(A_{\hat{\pi}}(\mathbf{s},\mathbf{y})\big),
+\label{eq:cfgrl}
+\end{equation}
+where $f:\mathbb{R}\!\to\!\mathbb{R}_{\ge 0}$ is a nonnegative monotonically increasing function of the advantage $A^\pi(\mathbf{s},\mathbf{y}) = Q^\pi(\mathbf{s},\mathbf{y})-V^\pi(\mathbf{s})$~\cite{sutton1998reinforcement}, and $\hat{\pi}$ is a reference policy. According to the formal proof of the authors in the appendix (Theorem 1) \cite{frans2025diffusion}, a new policy generated from a carefully weighted combination of previous policies is guaranteed to achieve a higher expected return than the original reference policy. This result generalizes earlier findings in bandits and provides a pathway for improving policies.
+
+We can say that the reference policy is learned from given data, or we can say that this is any non-optimal policy that we want to improve. Following \eqref{eq:cfgrl} $\pi$ provably improves over $\hat{\pi}$; moreover, \emph{attenuating} the optimality factor with an exponent ${w}$ yields a family $\pi_w \propto \hat{\pi} f(A)^{w}$ whose expected return increases with ${w}$. This recovers KL-regularized policy improvement as a special case, where the optimal solution has the same product form with $f(A)=\exp(A/\beta)$, tying ${w}$ to the trust-region strength $\beta$ \emph{without} retraining. 
+
+Crucially, CFGRL shows that diffusion guidance composes these factors at the \emph{score} level. Let $\mathbf{o}\in\{\emptyset,1\}$ indicate \emph{optimality}, defined by $f$ as
+$p(\mathbf{o}|\mathbf{s},\mathbf{y}) = f(A(s,\mathbf{y}))$, then the product policy of Eq. \eqref{eq:cfgrl} can now be equivalently defined as: $\pi(y\mid \mathbf{s})\;\propto\;\hat{\pi}(y\mid \mathbf{s})p(\mathbf{o}|\mathbf{s},\mathbf{y})$. 
+
+As such, the score of the product policy above can be represented as the sum of two factors  $\nabla_a \log \pi(y|\mathbf{s}) = \nabla_a \log \hat{\pi}(y|\mathbf{s}) + \nabla_a \log p(\mathbf{o}|\mathbf{s},y)$.
+Then, using Bayes rule and ${w}$, CFG produces an score:
+\begin{equation}
+\nabla_y \log \pi_{w}(y\mid \mathbf{s})\;=\;\nabla_y \log \hat{\pi}(y\mid \mathbf{s})+\;\nonumber
+\end{equation}
+\vspace{-3mm}
+\begin{equation}
+{w}\Big(\nabla_y \log \hat{\pi}(y\mid \mathbf{s},\mathbf{o}{=}1)-\nabla_y \log \hat{\pi}(y\mid \mathbf{s})\Big),
+\end{equation}
+which corresponds to sampling from $\pi_{w}\!\propto\!\hat{\pi}(y\mid \mathbf{s})\,p(\mathbf{o}{=}1\mid s,\mathbf{y})^{w}$. Please see \citep{frans2025diffusion} for other derivation details. This realizes \emph{controllable} policy improvement at test time by tuning ${w}$, while training remains a simple supervised diffusion/flow objective with classifier-free dropout of $\mathbf{o}$. Overall, CFGRL preserves the stability and simplicity of generative supervised training while providing a principled, test-time knob for step-size in policy improvement. Empirically, CFGRL shows policy improvement and yields consistently better returns than the reference policy $\hat{\pi}$
+
+
+% \section{Different Faces of Latent Reasoning}
+% \label{sec:trm_analysis}
+
+% In this section, we decompose the architectural elements of the TRM to demonstrate its relationship with well-established frameworks in generative modeling and reinforcement learning. The goal of this section is to provide a formal hypothesis on \textit{why} TRM works. We aim to build a bridge between the empirical success of recursive reasoning and existing mathematical frameworks, specifically connecting the TRM's structure to \textbf{Classifier-Free Guidance (CFG)} and \textbf{Implicit Policy Improvement}.
+
+% \textbf{Notation}. Let $\mathbf{s} = (\mathbf{x}, \mathbf{z}_L, \mathbf{z}_H)$ be the state, where $\mathbf{x}$ is the input, $\mathbf{z}_L$ is the latent reasoning \emph{scratchpad}, and $\mathbf{z}_H$ is the current embedded solution. Despite the fact that TRM considering two modules $f^\phi_L$ and $f^\phi_H$, the same networks without any changes are using for both, so we  write $f_{\phi}$. An output head is $f_O$. As established in \S\ref{sec:trm}, only $\mathbf{z}_H$ is decoded and penalized. We introduce an optimality variable $\mathbf{o} \in \{\emptyset, 1\}$ to distinguish between two distinct modes of operation:
+% \begin{itemize}
+%     \item \textbf{Not optimal ($\mathbf{o}=\emptyset$):} The prediction derived solely from the current solution state $\mathbf{z}_H$, without the benefit of the latest latent reasoning step $\mathbf{z}_L$.
+%     \item \textbf{Optimal ($\mathbf{o}=1$):} The prediction derived after the latent reasoning process $\mathbf{z}_L$ has updated the state.
+% \end{itemize}
+
+% \subsection{Latent Reasoning as Classifier-Free Guidance}
+% \label{sec:trm_cfg}
+
+% The Hierarchical Reasoning Model and the Tiny Recursive Model are fundamentally based on iterative latent updates. As discussed in Sections \ref{sec:hrm} and \ref{sec:trm}, this process involves an explicit asymmetry: $\mathbf{z}_L$ (the reasoning) is updated using the input $\mathbf{x}$, and this reasoning conditions the update of $\mathbf{z}_H$ (the solution).
+
+% Let us consider a single latent reasoning cycle. At the beginning of the reasoning cycle, we first have the unconditional $\mathbf{z}_H$, then we can define the dynamics as:
+% \begin{equation}
+% \mathbf{z}_L^{n+1} = f_{\phi}(\mathbf{z}_L^{n}, \mathbf{z}_H, x) \quad \xrightarrow{\text{conditions}} \quad \mathbf{z}_H^{+} = f_{\phi}(\mathbf{z}_H, \mathbf{z}_L^{n+1}).
+% \end{equation}
+% This asymmetry allows us to extract two distinct readouts from the model at any given step. We define these as the
+% Reference Logits (the \emph{old policy} state) and the Optimal Logits (the \emph{new policy} state):
+% \begin{align*}
+% \text{\textbf{Reference (Old) Logits:}} \quad \ell_{\mathrm{u}} &:= f_O(\mathbf{z}_H) \\
+% \text{\textbf{Conditional (New) Logits:}} \quad \ell_{\mathrm{c}} &:= f_O(\mathbf{z}_H^{+})
+% \end{align*}
+% Here, $\ell_{\mathrm{u}}$ represents the model's best guess \textit{before} applying the reasoning step, while $\ell_{\mathrm{c}}$ represents the guess \textit{after} incorporating the reasoning from $\mathbf{z}_L$.
+
+% By framing the architecture this way, we can interpret the final prediction of the TRM as a form of Classifier-Free Guidance. We define the final logits $\ell_w$ as a linear interpolation in logits space:
+% \begin{equation}
+% \ell_{w} = \ell_{\mathrm{u}} + w \cdot \underbrace{(\ell_{\mathrm{c}} - \ell_{\mathrm{u}})}_{\text{Reasoning Residual}},
+% \qquad
+% \pi_{w}(\cdot \mid \mathbf{s}) = \mathrm{softmax}(\ell_{w}).
+% \label{eq:trm_cfg}
+% \end{equation}
+% In this framework, the term $(\ell_{\mathrm{c}} - \ell_{\mathrm{u}})$ represents the \textbf{direction of improvement} identified by the reasoning process. The scalar $w$ acts as a guidance scale (or reasoning depth).
+
+% \textbf{Practical Note:} \textit{In standard TRM inference, we typically do not explicitly tune $w$; instead, the model decodes directly from $\mathbf{z}_H^{+}$ (equivalent to $\ell_c$). However, this can be viewed as a special case where the guidance is implicitly fixed. Eq. \eqref{eq:trm_cfg} exposes $w$ as a controllable knob, allowing us to amplify or attenuate the reasoning signal at test time. A single line of code is all that's needed to add interpolated  prediction.}
+
+% \subsection{Latent Reasoning as Implicit Policy Improvement}
+% \label{sec:trm_pi}
+
+% In Section \ref{sec:trm_cfg}, we established that TRM can behave mechanically like Classifier-Free Guidance. We now demonstrate that this mechanism is a practical implementation of a controllable policy improvement operator. The core idea is to generate a new, better policy by combining a reference policy with a factor that encodes optimality. We frame this as sampling from a product policy:
+% \begin{equation}
+% \pi_{\text{new}}(\mathbf{y}|\mathbf{s}) \;\propto\; \underbrace{\hat{\pi}(\mathbf{y}|\mathbf{s})}_{\text{Reference Policy}} \cdot \underbrace{p(\mathbf{o}=1|\mathbf{s},\mathbf{y})}_{\text{Optimality Likelihood}}.
+% \label{eq:product_policy_general}
+% \end{equation}
+% Here, $p(\mathbf{o}=1|\mathbf{s},\mathbf{y})$ represents the probability that a given action leads to an optimal outcome.
+
+% \textbf{Why TRM-CFG does Policy Improvement.}
+% A key result from recent work in guidance-based RL  is that product policies guarantee improvement under mild conditions. Specifically, if the optimality likelihood $p(\mathbf{o}=1|\mathbf{s},\mathbf{y})$ is monotonically increasing with respect to the Advantage function $A_{\hat{\pi}}(\mathbf{s},\mathbf{y})$ (i.e., actions that are "better than average" have a higher probability of being optimal), then sampling from the product policy yields a higher expected return than the reference policy.
+
+% Crucially, we do not need to learn $p(\mathbf{o}=1|\mathbf{s},\mathbf{y})$ explicitly. Instead, we can utilize Bayes' rule to invert the optimality distribution into a conditional policy, as derived in the CFGRL framework. We can express the log-probability of the improved policy as:
+% \begin{align}
+% \log \pi_{\text{new}}(\mathbf{y}|\mathbf{s}) \;&\propto\; \log \hat{\pi}(\mathbf{y}|\mathbf{s}) \;+\; w \cdot \log p(\mathbf{o}=1|\mathbf{s},\mathbf{y})\nonumber \\
+% \intertext{Applying Bayes' rule: $\log p(\mathbf{o}|\mathbf{s},\mathbf{y}) = \log \hat{\pi}(\mathbf{y}|\mathbf{s},\mathbf{o}) - \log \hat{\pi}(\mathbf{y}|\mathbf{s}) + C$, we get:}
+% \log \pi_{\text{new}}(\mathbf{y}|\mathbf{s}) \;&\propto\; \underbrace{\log \hat{\pi}(\mathbf{y}|\mathbf{s})}_{\text{Old Policy } (\ell_u)} \;+\; \\ &w \cdot ( \underbrace{\log \hat{\pi}(\mathbf{y}|\mathbf{s}, \mathbf{o}=1)}_{\text{New Policy } (\ell_c)} - \underbrace{\log \hat{\pi}(\mathbf{y}|\mathbf{s})}_{\text{Old Policy } (\ell_u)} ). \nonumber
+% \end{align}
+% This derivation reveals a precise identity between TRM and policy improvement:
+% \begin{equation}
+% \label{eq:product_update}
+% \boxed{ \pi_{w}(\mathbf{y}|\mathbf{s}) \;\propto\; \hat{\pi}(\mathbf{y}|\mathbf{s}) \cdot \left( \frac{\hat{\pi}(\mathbf{y}|\mathbf{s}, \mathbf{o}=1)}{\hat{\pi}(\mathbf{y}|\mathbf{s})} \right)^w }
+% \end{equation}
+
+% By training the model's optimal path ($\mathbf{z}_H^+$) to predict the correct answer while the reference path ($\mathbf{z}_H$) predicts the baseline (last reasoning step prediction), the residual term $(\ell_c - \ell_u)$ functionally plays the same role as the advantage-based update in CFGRL. It effectively re-weights the distribution to favor actions that the reasoning step identified as \emph{better}, allowing the model to perform a step of policy iteration at every forward pass without explicitly estimating a value function.
+
+% \section{Deep Improvement Supervision}
+% \label{sec:dis}
+
+% While Section \ref{sec:trm_pi} establishes that TRMs implicitly perform policy improvement, relying solely on terminal supervision creates a difficult optimization landscape. In the standard setting, the model must \emph{implicitly} discover a sequence of latent updates that result in a correct final answer. This requires the model to infer the direction of improvement (the advantage) from a sparse, high-variance signal at the end of a long reasoning chain. To solve this issue, we introduce \textbf{Deep Improvement Supervision (DIS)}. We first derive the precise mathematical condition required for TRM reasoning to improve performance: \emph{Advantage Margin}. We then demonstrate how DIS directly optimizes this condition, transforming the abstract goal of reasoning into a concrete, step-wise supervised objective.
+
+% \subsection{The Mechanics of Improvement}
+% \label{sec:dis_theory}
+% To motivate our approach, we must first formalize exactly \emph{how} the asymmetric readout of a TRM leads to better predictions.
+% Recall that at any step $s$, the TRM produces two sets of logits:
+% \begin{itemize}
+%     \item \textbf{Reference Logits ($\ell_u$):} Derived from the current state $\mathbf{z}_H$, representing the policy before the reasoning step.
+%     \item \textbf{Conditional Logits ($\ell_c$):} Derived from the updated state $\mathbf{z}_H^+$, which has attended to the latent $\mathbf{z}_L$.
+% \end{itemize}
+% We define the \textbf{residual} $\Delta\ell$ as the difference between these views: $\Delta\ell(a) = \ell_c(a) - \ell_u(a)$. When we apply guidance with weight $w$, the final policy becomes $\pi_w = \text{softmax}(\ell_u + w\Delta\ell)$. We ask, under what conditions does increasing $w$ improve the probability of the correct answer $\mathbf{y}$?
+
+% \begin{proposition}[The Advantage Margin Condition]
+% \label{thm:margin}
+% Let $\mathcal{L}(w) = -\log \pi_w(\mathbf{y})$ be the cross-entropy loss for the correct class $\mathbf{y}$. The loss strictly decreases as $w$ increases if and only if:
+% \begin{equation}
+% \label{eq:margin_condition}
+% \underbrace{\Delta\ell[\mathbf{y}]}_{\text{Boost to Correct Class}} \;>\; \underbrace{\mathbb{E}_{a \sim \pi_w}[\Delta\ell[a]]}_{\text{Average Boost}}.
+% \end{equation}
+% \end{proposition}
+
+
+% The loss gradient with respect to $w$ is given by $\frac{d}{dw}\mathcal{L}(w) = \mathbb{E}_{a \sim \pi_w}[\Delta\ell[a]] - \Delta\ell[\mathbf{y}]$. For the loss to decrease ($\frac{d}{dw}\mathcal{L} < 0$), the residual of the correct class must exceed the policy-weighted expectation of all residuals. Please, see Appendix \ref{app:proofs} for details.
+
+% This proposition states that for reasoning to be beneficial, the TRM must produce a residual $\Delta \ell$ that "boosts" the correct answer more than it boosts the average alternative. We call this gap the \textbf{Advantage Margin}. If this margin is positive, deeper reasoning is mathematically guaranteed to improve the results.
+
+% \subsection{From Implicit Discovery to Explicit Supervision}
+
+% In standard TRM training, the model attempts to implicitly satisfy the proposition \ref{thm:margin}. DIS solves this by \emph{explicitly} enforcing a positive Advantage Margin at every recursive step. We achieve this by constructing a sequence of intermediate targets that strictly contract towards the solution.
+
+% Let $\mathbf{x}$ be the input and $\mathbf{y}^\star$ the ground-truth output. Let $\Phi$ be a target generator (e.g., a discrete diffusion schedule) that produces a sequence $\{\mathbf{y}^\dagger_s\}_{s=0}^{N_{\text{sup}}}$ where each target is strictly closer to the ground truth than the last, with $\mathbf{y}^\dagger_{N_{\text{sup}}} = \mathbf{y}^\star$.
+
+% Ideally, we want to enforce that the "Reference" logits match the previous target $\mathbf{y}^\dagger_{s-1}$ and the "Conditional" logits match the improved target $\mathbf{y}^\dagger_s$. This implies a double loss objective:
+% \begin{equation}
+% \label{eq:dis_loss_dual}
+% \mathcal{L}_{\text{Dual}} = \sum_{s=1}^{N_{\text{sup}}} \Big[ \underbrace{\mathrm{CE}(\ell_u^s, \mathbf{y}^\dagger_{s-1})}_{\text{Anchor Previous}} \;+\; \underbrace{\mathrm{CE}(\ell_c^s, \mathbf{y}^\dagger_{s})}_{\text{Predict Current}} \Big].
+% \end{equation}
+
+% However, this double formulation is computationally redundant in a recursive architecture. In the TRM, the input to step $s$ (which generates $\ell_u^s$) is strictly derived from the output of step $s-1$ (which generated $\ell_c^{s-1}$). Since step $s-1$ is supervised to minimize the distance to $\mathbf{y}^\dagger_{s-1}$, the term $\ell_u^s$ is implicitly anchored to the previous target. Therefore, we define our operational Single Loss as follows:
+% \begin{equation}
+% \label{eq:dis_loss_single}
+% \mathcal{L}_{\text{DIS}} = \sum_{s=1}^{N_{\text{sup}}} \mathrm{CE}(\ell_c^s, \mathbf{y}^\dagger_{s}).
+% \end{equation}
+% Because optimization is sequential, minimizing Eq. \eqref{eq:dis_loss_single} is inductively equivalent to minimizing Eq. \eqref{eq:dis_loss_dual}: by forcing $\ell_c^{s-1} \to \mathbf{y}^\dagger_{s-1}$, we ensure that $\ell_u^s$ (the starting point of step $s$) is effectively $\mathbf{y}^\dagger_{s-1}$.
+
+% \subsection{Why DIS Works}
+
+% Training $\ell_c$ on the improved target $\mathbf{y}^\dagger_s$ while $\ell_u$ is anchored to $\mathbf{y}^\dagger_{s-1}$, we force the residual $\Delta\ell = \ell_c - \ell_u$ to encode the transition from $\mathbf{y}^\dagger_{s-1}$ to $\mathbf{y}^\dagger_s$. This leads to our second formal result.
+
+% \begin{proposition}[Guaranteed Improvement]
+% \label{proposition:contraction}
+% Assume that the target generator $\Phi$ provides strictly improving targets such that the likelihood ratio $\log \frac{P(\mathbf{y}^\dagger_{s})}{P(\mathbf{y}^\dagger_{s-1})} > 0$. Minimizing sequential loss $\mathcal{L}_{\text{DIS}}$ drives the expected Advantage Margin to be positive:
+% \begin{equation}
+% \mathbb{E}\big[\Delta\ell[\mathbf{y}^\star] - \mathbb{E}[\Delta\ell]\big] > 0.
+% \end{equation}
+% \end{proposition}
+
+% Please, see Appendix \ref{app:proofs} for details. Standard training hopes the model learns to improve. DIS \emph{forces} the model to improve. By aligning the residual $\Delta\ell$ with the difference between the current target $\mathbf{y}^\dagger_s$ and the previous target $\mathbf{y}^\dagger_{s-1}$, we mathematically guarantee that the vector $\Delta\ell$ points in the direction of the solution. Consequently, DIS transforms the TRM from a black-box recurrent model into a verifiable iterative refinement algorithm, where each forward pass is supervised to function as a precise policy improvement step.
+
+\section{Different Faces of Latent Reasoning}
+\label{sec:trm_analysis}
+In this section, we decompose the architectural elements of the TRM to demonstrate its relationship with well‑established frameworks in generative modeling and reinforcement learning. The goal is to provide a formal hypothesis for \emph{why} TRM works by connecting the model’s asymmetric latent updates to \textbf{Classifier‑Free Guidance (CFG)} and to \textbf{Implicit Policy Improvement}.
+
+\textbf{Notation.}
+Let the state be \(\mathbf{s}=(\mathbf{x},\mathbf{z}_L,\mathbf{z}_H)\) at recursion step \(t\), where \(\mathbf{x}\) is the input, \(\mathbf{z}_L\) is the latent reasoning \emph{scratchpad}, and \(\mathbf{z}_H\) is the current solution embedding. TRM applies a (parameter‑shared) update operator in two roles:
+\begin{equation}
+\mathbf{z}_L^{n+1}=f_{\phi}^{(L)}(\mathbf{z}_L^{n},\mathbf{z}_H^{n},\mathbf{x}),
+\qquad
+\mathbf{z}_H^{n+1}=f_{\phi}^{(H)}(\mathbf{z}_H^{n},\mathbf{z}_L^{n+1}),
+\end{equation}
+where \(f_{\phi}^{(L)}\) and \(f_{\phi}^{(H)}\) are two instantiations that \emph{share} parameters \(\phi\) but differ in inputs.
+An output head \(f_O\) maps \(\mathbf{z}_H\) to a vector of logits. As established in \S\ref{sec:trm}, only \(\mathbf{z}_H\) is decoded and trained (with cross‑entropy). We introduce a binary indicator \(o\in\{0,1\}\) to distinguish two readout modes:
+\begin{itemize}
+    \item \textbf{Reference (\(o=0\)):} pre‑reasoning readout from \(\mathbf{z}_H^{n}\), with $\ell_u := f_O(\mathbf{z}_H^{n})$ is \emph{reference} logits.
+    \item \textbf{Conditional (\(o=1\)):} post‑reasoning readout from \(\mathbf{z}_H^{n+1}\) after attending to \(\mathbf{z}_L^{n+1}\), with $\ell_c := f_O(\mathbf{z}_H^{n+1})$ is \emph{conditional} logits).
+\end{itemize}
+Throughout, we write \(\pi_u=\mathrm{softmax}(\ell_u)\), \(\pi_c=\mathrm{softmax}(\ell_c)\). Logits are understood as unnormalized log‑probabilities whose softmax defines the corresponding policy over actions/classes.
+% \paragraph{Assumptions (used throughout).}
+% (i) All distributions are supported on the same finite action space (e.g., a vocabulary). (ii) Guidance scales \(w\ge 0\). (iii) When we identify logits with log‑probabilities, we do so up to class‑independent constants, which cancel under softmax.
+\subsection{Latent Reasoning as Classifier‑Free Guidance}
+\label{sec:trm_cfg}
+
+The Hierarchical Reasoning Model and the Tiny Recursive Model are based on iterative latent updates. As discussed in \S \ref{sec:hrm} and \S \ref{sec:trm}, the process is asymmetric: the reasoning state \(\mathbf{z}_L\) is updated using \(\mathbf{x}\) and \(\mathbf{z}_H\), and this updated reasoning conditions the subsequent update of \(\mathbf{z}_H\). At any recursion step \(t\), this asymmetry yields two readouts:
+\[
+\ell_u=f_O(\mathbf{z}_H^{n}) \text{(reference)}, 
+\qquad 
+\ell_c=f_O(\mathbf{z}_H^{n+1}) \text{(conditional)}.
+\]
+By interpolating in \emph{logit} space we obtain guided logits and the corresponding guided policy:
+\begin{equation}
+\ell_{w} \;=\; (1-w)\,\ell_{\mathrm{u}} \;+\; w\,\ell_{\mathrm{c}},
+\qquad
+\pi_{w}(\cdot \mid \mathbf{s}) \;=\; \mathrm{softmax}(\ell_{w}).
+\label{eq:trm_cfg}
+\end{equation}
+Equivalently, \(\pi_w\) is a product of the two policies:
+\begin{equation*}
+\pi_w(a\mid\mathbf{s}) \;\propto\; \pi_u(a\mid\mathbf{s})^{\,1-w}\;\pi_c(a\mid\mathbf{s})^{\,w}.
+\end{equation*}
+Here, the residual \(\Delta\ell := \ell_c-\ell_u\) captures the \emph{direction of improvement} suggested by latent reasoning, while \(w\) acts as a guidance scale (or reasoning depth). 
+
+\textbf{Practical note.} \emph{In standard TRM inference, decoding uses the conditional path \(\mathbf{z}_H^{n+1}\) (i.e., \(w=1\)). Eq.~\eqref{eq:trm_cfg} exposes \(w\) as a controllable knob at test time, allowing amplification or attenuation of the reasoning signal}.\footnote{Classifier‑Free Guidance in diffusion mixes \emph{scores} (gradients of log density). Here we mix \emph{logits}. The algebraic product‑of‑experts identity above holds because logits exponentiate to probabilities under softmax.}
+
+\subsection{Latent Reasoning as Implicit Policy Improvement}
+\label{sec:trm_pi}
+
+Section~\ref{sec:trm_cfg} shows that TRM’s two readouts can be mixed as in CFG. We now show that the same mechanism implements a controllable \emph{policy improvement} operator. Consider sampling from a product policy:
+\begin{equation}
+\pi_{\text{new}}(y\mid\mathbf{s})
+\;\propto\;
+\underbrace{\hat{\pi}(y\mid\mathbf{s})}_{\text{Reference policy}}
+\cdot
+\underbrace{p(o=1\mid\mathbf{s},y)}_{\text{Optimality likelihood}},
+\label{eq:product_policy_general}
+\end{equation}
+where \(p(o=1\mid\mathbf{s},y)\) measures how likely action \(y\) leads to an optimal outcome (or, in our approximation below, to an improved conditional distribution).
+
+%\textbf{TRM‑CFG does policy improvement.}
+Guidance‑based RL~\cite{frans2025diffusion} shows that such product policies improve performance under mild conditions: if \(p(o=1\mid\mathbf{s},y)\) increases monotonically with the advantage \(A_{\hat{\pi}}(\mathbf{s},y)\), then the product policy has higher expected return than \(\hat{\pi}\).
+Introducing a guidance scale \(w\ge 0\) and applying Bayes’ rule,
+\[
+\log p(o\mid\mathbf{s},y) = \log \hat{\pi}(y\mid\mathbf{s},o)- \log \hat{\pi}(y\mid\mathbf{s})+ \log p(o\mid\mathbf{s}),
+\]
+where \(\log p(o\mid\mathbf{s})\) is independent of \(y\), we obtain
+\begin{align*}
+\log \pi_{\text{new}}(y\mid\mathbf{s})
+&\propto
+\log \hat{\pi}(y\mid\mathbf{s})
++\\
+&\; w\big(\log \hat{\pi}(y\mid\mathbf{s},o)-\log \hat{\pi}(y\mid\mathbf{s})\big) \\
+&\;\equiv\;
+(1-w)\,\underbrace{\log \hat{\pi}(y\mid\mathbf{s})}_{\text{``old''}}+
+w\,\underbrace{\log \hat{\pi}(y\mid\mathbf{s},o)}_{\text{``new''}}.
+\end{align*}
+Exponentiating and normalizing yields the exact identity
+\begin{equation}
+\label{eq:product_update}
+\boxed{\;
+\pi_{w}(y\mid\mathbf{s})
+\;\propto\;
+\hat{\pi}(y\mid\mathbf{s})
+\cdot
+\left(
+\frac{\hat{\pi}(y\mid\mathbf{s}, o=1)}{\hat{\pi}(y\mid\mathbf{s})}
+\right)^{\!w}
+\;}
+\end{equation}
+which matches the logit interpolation in Eq.~\eqref{eq:trm_cfg} when \(\ell_u\) and \(\ell_c\) are the (unnormalized) log‑probabilities of \(\hat{\pi}(\cdot\mid\mathbf{s})\) and \(\hat{\pi}(\cdot\mid\mathbf{s},o=1)\), respectively. 
+
+By training the conditional path (\(\mathbf{z}_H^{n+1}\), hence \(\ell_c\)) toward the correct answer while the reference path (\(\mathbf{z}_H^{n}\), hence \(\ell_u\)) encodes the pre‑reasoning baseline, the residual \(\Delta\ell=\ell_c-\ell_u\) functions as a log‑likelihood ratio—an advantage‑like update that reweights actions the reasoning step deems \emph{better}. Thus TRM performs a step of policy iteration at each forward pass without explicitly estimating a value function.
+
+\section{Deep Improvement Supervision}
+\label{sec:dis}
+
+While \S\ref{sec:trm_pi} establishes that TRMs implicitly perform policy improvement, relying solely on terminal supervision creates a difficult optimization landscape: the model must discover a sequence of latent updates that yields a correct final answer, inferring the direction of improvement from a sparse, high‑variance terminal signal. To address this, we introduce \textbf{Deep Improvement Supervision (DIS)}. We first formalize the condition under which the asymmetric readouts improve predictions—\emph{Advantage Margin}—and then show how DIS directly optimizes this condition by turning “reasoning” into a concrete, step‑wise supervised objective.
+
+\subsection{The Mechanics of Improvement}
+\label{sec:dis_theory}
+
+At recursion step \(t\), the TRM produces two sets of logits:
+\begin{itemize}
+    \item \textbf{Reference logits \(\ell_u\):} from \(\mathbf{z}_H^{n}\), representing the policy before the reasoning step.
+    \item \textbf{Conditional logits \(\ell_c\):} from \(\mathbf{z}_H^{n+1}\), after attending to \(\mathbf{z}_L^{n+1}\).
+\end{itemize}
+Define the \textbf{residual} \(\Delta\ell(a)=\ell_c(a)-\ell_u(a)\). With guidance weight \(w\), \(\pi_w=\mathrm{softmax}(\ell_u+w\Delta\ell)\). Let \(y^\star\) denote the correct class at the current decoding position. We ask: under what condition does increasing \(w\) improve \(\pi_w(y^\star)\)?
+
+\begin{proposition}[Advantage Margin Condition]
+\label{thm:margin}
+Let \(\mathcal{L}(w)=-\log\pi_w(y^\star)\) be the cross‑entropy loss for the correct class. Then \(\frac{d}{dw}\mathcal{L}(w)<0\) (i.e., the loss strictly decreases as \(w\) increases) if and only if
+\begin{equation}
+\label{eq:margin_condition}
+\underbrace{\Delta\ell[y^\star]}_{\text{Boost to correct class}}
+\;>\;
+\underbrace{\mathbb{E}_{a\sim \pi_w}\big[\Delta\ell[a]\big]}_{\text{Policy‑weighted average boost}}.
+\end{equation}
+Moreover, \(\frac{d}{dw}\mathcal{L}(w)=\mathbb{E}_{a\sim \pi_w}[\Delta\ell[a]]-\Delta\ell[y^\star]\) and \(\frac{d^2}{dw^2}\mathcal{L}(w)=\mathrm{Var}_{a\sim\pi_w}[\Delta\ell[a]]\ge 0\).
+\end{proposition}
+
+\noindent
+See Appendix~\ref{app:proofs} for details. Intuitively, reasoning helps when the residual gives the correct prediction a larger boost than it gives a typical alternative, in other words, when \textbf{Advantage Margin} is positive.
+
+\subsection{From Implicit Discovery to Explicit Supervision}
+
+In standard TRM training, the model attempts to satisfy Proposition~\ref{thm:margin} implicitly. DIS \emph{explicitly} enforces a positive Advantage Margin at every recursive step by constructing intermediate targets that contract toward the solution.
+
+Let \(\mathbf{x}\) be the input and \(\mathbf{y}^\star\) the ground‑truth output sequence. Let \(\Phi\) be a target generator (e.g., a discrete diffusion‑style schedule) that produces a sequence \(\{\mathbf{y}^\dagger_s\}_{s=0}^{N_{\text{sup}}}\) with \(\mathbf{y}^\dagger_{N_{\text{sup}}}=\mathbf{y}^\star\) and each \(\mathbf{y}^\dagger_s\) strictly closer to \(\mathbf{y}^\star\) than \(\mathbf{y}^\dagger_{s-1}\) under a fixed metric, for example Hamming distance.
+
+Ideally, we want the \emph{reference} logits at step \(s\) to match the previous target \(\mathbf{y}^\dagger_{s-1}\) and the \emph{conditional} logits to match the improved target \(\mathbf{y}^\dagger_s\), leading to a double‑loss objective:
+\begin{equation}
+\label{eq:dis_loss_dual}
+\mathcal{L}_{\text{Dual}}
+=
+\sum_{s=1}^{N_{\text{sup}}}
+\Big[
+\underbrace{\mathrm{CE}(\ell_u^s,\mathbf{y}^\dagger_{s-1})}_{\text{Anchor previous}}
+\;+\;
+\underbrace{\mathrm{CE}(\ell_c^s,\mathbf{y}^\dagger_{s})}_{\text{Predict current}}
+\Big].
+\end{equation}
+However, in a recursive architecture, this is redundant: the input to step \(s\) (which produces \(\ell_u^s\)) is a deterministic function of the output of step \(s-1\) (which produced \(\ell_c^{s-1}\)). Since step \(s-1\) is trained toward \(\mathbf{y}^\dagger_{s-1}\), \(\ell_u^s\) is implicitly anchored. We therefore use the \emph{single‑loss} objective
+\begin{equation}
+\label{eq:dis_loss_single}
+\mathcal{L}_{\text{DIS}}
+=
+\sum_{s=1}^{N_{\text{sup}}}
+\mathrm{CE}(\ell_c^s,\mathbf{y}^\dagger_{s}).
+\end{equation}
+Because optimization is sequential, minimizing Eq.~\eqref{eq:dis_loss_single} is (under teacher‑forced recursion) inductively equivalent to minimizing Eq.~\eqref{eq:dis_loss_dual}: forcing \(\ell_c^{s-1}\!\to\!\mathbf{y}^\dagger_{s-1}\) ensures \(\ell_u^{s}\) starts near \(\mathbf{y}^\dagger_{s-1}\).
+
+Training \(\ell_c\) on \(\mathbf{y}^\dagger_s\) while \(\ell_u\) is anchored to \(\mathbf{y}^\dagger_{s-1}\) forces the residual \(\Delta\ell=\ell_c-\ell_u\) to encode the transition from \(\mathbf{y}^\dagger_{s-1}\) to \(\mathbf{y}^\dagger_s\). This yields our second formal result.
+
+\begin{proposition}[Guaranteed Improvement]
+\label{proposition:contraction}
+Assume the target generator \(\Phi\) provides strictly improving targets with respect to a fixed scoring distribution \(P\), i.e.,
+\(\log \tfrac{P(\mathbf{y}^\dagger_{s})}{P(\mathbf{y}^\dagger_{s-1})}>0\) for all \(s\).
+Then minimizing the sequential loss \(\mathcal{L}_{\text{DIS}}\) drives the expected Advantage Margin to be positive:
+\begin{equation*}
+\mathbb{E}\Big[\Delta\ell[y^\star]-\mathbb{E}_{a\sim \pi_w}\Delta\ell[a]\Big] \;>\; 0,
+\end{equation*}
+where the outer expectation is over data (and model stochasticity) and the inner expectation is with respect to \(\pi_w\) for any fixed \(w\ge 0\).
+\end{proposition}
+
+\noindent
+See Appendix~\ref{app:proofs} for details. Standard training \emph{hopes} the model learns to improve; DIS \emph{forces} each residual vector \(\Delta\ell\) to point toward the solution. Consequently, DIS turns TRM from a black‑box recurrent model into a verifiable iterative refinement procedure in which every forward pass is supervised to act as a precise policy‑improvement step.
+
+\subsection{Algorithm}
+\label{sec:dis:algorithm}
+\begin{figure*}[t!]
+\centering
+% --- Left Side: Image ---
+\begin{minipage}[t]{0.48\textwidth}
+    \vspace{0pt} % Forces top alignment relative to the neighbor
+    \centering
+    \includegraphics[width=0.77\linewidth]{images/architecture_2.png}
+    \caption{DIS model architecture. Algorithm starts with the embedded input question $\mathbf{x}$, initial embedded answer $\mathbf{y}$, and latent state $z$. For up to $n$ improvement steps, it tries to improve its answer $\mathbf{y}$ by simulating a discrete diffusion process, addressing any errors from its previous answer in an parameter-efficient manner.}
+    \label{fig:architecture}
+\end{minipage}
+\hfill % Adds space between the two minipages
+% --- Right Side: Pseudocode ---
+\begin{minipage}[t]{0.47\textwidth}
+    \vspace{0pt} % Forces top alignment relative to the neighbor
+    \begin{lstlisting}[basicstyle=\footnotesize\ttfamily, numbers=left, frame=none]
+def latent_reasoning(x, y, z, n=2):
+    with torch.no_grad():
+        for j in range(T-1):
+            for i in range(n):
+                z = net(x, y, z)
+            y = net(y, z)
+    for i in range(n):
+        z = net(x, y, z)
+    y = net(y, z)
+    return (y.detach(), z.detach()), output_head(y)
+
+# Deep Improvement Supervision
+for x_input, y_true in train_dataloader:
+    y, z = y.init, z.init
+    for step in range(N_supervision):
+        y_step = f(x_true, y_true, step)
+        x = input_embedding(x_input, step)
+        (y, z), y_hat = latent_reasoning(x, y, z)
+        loss = softmax_cross_entropy(y_hat, y_step)
+        loss.backward()
+        opt.step()
+        opt.zero_grad()
+    \end{lstlisting}
+    \vspace{-2mm}
+    \caption{Pseudocode for reasoning with deep improvement supervision. With $T=1$ (as in our \emph{medium} settings), \textbf{we avoid the large (\texttt{no-grad}) cycle} and significantly reduce computational time.}
+    \label{fig:latent_reasoning_code}
+\end{minipage}
+\vspace{-4mm}
+\end{figure*}
+In standard TRM training, the model attempts to satisfy Theorem \ref{thm:margin} implicitly. It tries to find a latent configuration $\mathbf{z}_L$ such that the final margin is positive. This is often unstable because the gradient signal must traverse the entire recursive chain.
+
+DIS solves this by \emph{explicitly} enforcing a positive Advantage Margin at every recursive step. We achieve this by constructing a sequence of intermediate targets that strictly contract towards the solution. Let $\{\mathbf{y}_s^\dagger\}_{s=1}^{N_{\text{sup}}}$—constructed so that the expected discrepancy to $\mathbf{y}^\star$ strictly decreases with $s$.
+Let $\mathbf{x}\!\in\!\mathcal{X}$ be the input, $\mathbf{y}^\star\!\in\!\mathcal{Y}$ the final target, and $(\mathbf{y},\mathbf{z})$ the TRM state passed across supervision steps. A \emph{target generator} $\Phi$ produces a sequence of stepwise targets
+\begin{equation}
+\mathbf{y}^{\dagger}_1,\;\mathbf{y}^{\dagger}_2,\;\ldots,\;\mathbf{y}^{\dagger}_{N_{\text{sup}}}
+\;=\;
+\Phi(\mathbf{x},\mathbf{y}^\star;\;1{:}N_{\text{sup}}),
+\label{eq:phi}
+\end{equation}
+with $\mathbf{y}^{\dagger}_{N_{\text{sup}}}=\mathbf{y}^\star$, such that the distance to the final solution decreases monotonically along the schedule, e.g. 
+where $d$ is a task-appropriate discrepancy (e.g., Hamming distance over tokens). Each supervision step $s\in\{1,\ldots,N_{\text{sup}}\}$ is indexed and receives a \emph{puzzle embedding} $E(p)$. Our algorithm admits diverse sources of intermediate targets \texorpdfstring{$\Phi$}{Phi}:
+\begin{enumerate}
+\item \textbf{Programmable edits.} Deterministic code-based generator creates path from input to output, for example puzzle solvers that reveal $N$ constraint-consistent move per step, yielding $\mathbf{y}^{\dagger}_{s+1}=\mathrm{Edit}(\mathbf{y}^{\dagger}_s)$.
+
+\item \textbf{LLM-generated plans.} A teacher LLM proposes a sequence of intermediate solutions or sketches; these are projected onto the task’s discrete output space to form $\{\mathbf{y}^{\dagger}_s\}$.
+
+\item \textbf{Discrete diffusion schedules.} Define a corruption process $q_{\beta}(\tilde{\mathbf{y}}\,|\,\mathbf{y}^\star)$ (e.g., token masking or random replacement with rate $\beta$). Choose a decreasing noise schedule and sample $\mathbf{y}^{\dagger}_s\sim q_{\beta_s}(\cdot\,|\,\mathbf{y}^\star)$ so that the targets become progressively less corrupted, approximating a reverse-diffusion path over discrete outputs\footnote{We do not position our method as diffusion models. It does not employ diffusion-based schedulers, nor does it explicitly compute concrete scores or distributional ratios \cite{lou2023discrete}. We propose a general framework for guiding the reasoning steps.}.
+\end{enumerate}
+These constructions guarantee by design (or in expectation) that the improvement direction is explicit. In our paper, we choose the simplest version with stepwise targets via discrete corruption.
+Let $\mathbf{x}$ be the input and $\mathbf{y}^\star$ the ground-truth output.
+Choose a decreasing noise schedule $0=\beta_{N_{\text{sup}}}<\cdots<\beta_2<\beta_1\le 1$ and a token-level corruption kernel $q_{\beta}$ (e.g., masking at rate $\beta$). Define a sequence of intermediate targets
+\begin{equation}
+\mathbf{y}^{\dagger}_s \;\sim\; q_{\beta_s}(\cdot \mid \mathbf{y}^\star), \qquad s=1,\ldots,N_{\text{sup}},
+\label{eq:dis-targets}
+\end{equation}
+so that $\mathbf{y}^{\dagger}_{N_{\text{sup}}}=\mathbf{y}^\star$ and, in expectation, the discrepancy with $\mathbf{y}^\star$ (e.g., the Hamming distance) decreases with $s$. We pass $(\mathbf{y}_{s+1},\mathbf{z}_{s+1})$ to the next deep supervision step:
+% \begin{figure}[h!] % [t!] forces top placement
+% \centering
+% \begin{minipage}{0.48\textwidth}
+% \centering
+% \includegraphics[width=0.8\linewidth]{images/architecture_2.png}
+% \caption{DIS model architecture. Algorithm starts with the embedded input question $\mathbf{x}$, initial embedded answer $\mathbf{y}$, and latent state $z$. For up to $n$ improvement steps, it tries to improve its answer $\mathbf{y}$ by simulating a discrete diffusion process, addressing any errors from its previous answer in an parameter-efficient manner.}
+% \label{fig:architecture}
+% \end{minipage}
+% \vspace{10mm}
+% \begin{minipage}{0.45\textwidth}
+% \begin{lstlisting}[basicstyle=\footnotesize\ttfamily, numbers=right, frame=none]
+% def latent_reasoning(x, y, z, n=2):
+%     with torch.no_grad():
+%         for j in range(T-1):
+%             for i in range(n):
+%                 z = net(x, y, z)
+%             y = net(y, z)
+%     for i in range(n):
+%         z = net(x, y, z)
+%     y = net(y, z)
+%     return (y.detach(), z.detach()), output_head(y)
+
+% # Deep Improvement Supervision
+% for x_input, y_true in train_dataloader:
+%     y, z = y.init, z.init
+%     for step in range(N_supervision):
+%         y_step = f(x_true, y_true, step)
+%         x = input_embedding(x_input, step)
+%         (y, z), y_hat = latent_reasoning(x, y, z)
+%         loss = softmax_cross_entropy(y_hat, y_step)
+%         loss.backward()
+%         opt.step()
+%         opt.zero_grad()
+% \end{lstlisting}
+% \vspace{-2mm}
+% \caption{Pseudocode for reasoning with deep improvement supervision. With $T=1$ (as in our \emph{medium} settings), \textbf{we avoid the large (\texttt{no-grad}) cycle} and significantly reduce computational time.}
+% \label{fig:latent_reasoning_code}
+% \vspace{-6mm}
+% \end{minipage}
+% \vspace{-8mm}
+% \end{figure}
+During training, the model receives step-by-step supervision targets and computes losses at each improvement step, allowing it to learn how to sequentially enhance its answers through backpropagation across the reasoning chain. 
+
+In this framework, a diffusion corruption process is merely one option for supervising the reasoning process. As demonstrated above, any other sampler for improvement guidance may be used. Crucially, we incorporate the time step t into the model input and observe that an integer-based time index $(0,1\dots,N_{sup})$ yields superior results compared to standard continuous diffusion time conditioning $t\in[0,1])$. Simplification vs. TRM are:
+\begin{itemize}
+    \item \textbf{Recursion budget:} DIS: $T{=}1, n{=}2$ vs.\ TRM: $T{=}3, n{=}6$ on ARC—DIS backpropagates through one cycle with \textbf{two} internal latent/answer updates; TRM runs no-grad cycles before a grad cycle. The total step formula is $N_{sup}×[T×(n+1)]$, so TRM does $16 *[3*(6+1)] = 336$, while we have $6×(2+1)=\textbf{18}$
+    \item \textbf{Supervision:} DIS trains each step toward a step-specific target $\mathbf{y}_s^\dagger$ that provably induces monotone improvement; TRM supervises every step directly on the final label $\mathbf{y}^\star$.
+    \item \textbf{Halting/ACT:} DIS uses a \textbf{fixed} $N_{\text{sup}}{=}6$ with \textbf{no halting head} and no extra forward pass; TRM/HRM use halting (HRM’s ACT requires a second forward pass for the continue loss).
+    \item \textbf{Backbone \& pipeline:} We keep TRM’s attention backbone and augmentation/evaluation pipeline for a fair comparison on \texttt{ARC}, as self-attention generalizes better on $30{\times}30$ puzzles.
+\end{itemize}
+
+\noindent
+Our DIS experiments adopt a minimal-compute design: we retain TRM's tiny 2-layer attention backbone and ARC protocol but use only \textbf{six} supervised improvement steps with a \textbf{single external cycle} (comprising two internal updates) and \textbf{no halting head}. This streamlined setup isolates the contribution of guided, monotonic improvement.
+
+\section{Experiments}
+\label{sec:experiments}
+In this section, we provide a detailed explanation and results on the complex \texttt{N-Queens}, \texttt{Sudoku-Extreme} and \texttt{ARC-AGI} problems. 
+
+\textbf{Backbone.} Our DIS model reuses the \emph{tiny single-network} TRM backbone but eliminates TRM’s extra recursion and halting heads. We use a 2-layer Transformer block with RMSNorm, SwiGLU MLPs, and rotary position embeddings; weights are shared for both the latent-update and answer-update calls, exactly as in TRM’s attention variant (``TRM-Att''), to isolate the contribution of DIS from capacity and architecture differences~\cite{jolicoeur2025less}. The task specific hyperparameters as the hidden layers size and reasoning steps are presented below, per task protocol. 
+
+% As in TRM, the model carries two states across supervision steps: the current solution $\mathbf{y}$ and a latent reasoning state $\mathbf{z}$. The same 2-layer network is called twice per internal step:
+% \[
+% \mathbf{z}\!\leftarrow\!\text{net}(\mathbf{x},\mathbf{y},\mathbf{z}), \qquad
+% \mathbf{y}\!\leftarrow\!\text{net}(\mathbf{y},\mathbf{z}).
+% \]
+% This ``one-net, two-calls'' design is exactly the simplification identified by TRM over HRM and is retained here~\cite{jolicoeur2025less,zhang2019rmsnorm,shazeer2020glu}.
+
+\subsection{\texttt{N-Queens}}
+\begin{figure}[h!]
+    \centering
+        \includegraphics[width=0.23\textwidth]{images/blue_in.png}
+        \hfill
+        \includegraphics[width=0.23\textwidth]{images/blue_out.png}
+    \caption{N-Queens reasoning problem example. Left is input and right is target solution.}
+    \label{fig:n-queens}
+    %\vspace{-1mm}
+\end{figure}
+\textbf{Task Format}. The \texttt{N-Queens} problem is a combinatorial reasoning task that involves placing $Q$ queens on a $8 \times 8$ chessboard \cite{oarga2025generalizable}. The fundamental objective is to arrange the queens such that no two queens threaten each other, which imposes the strict constraint that no two queens can share the same row, column, or diagonal. 
+
+This problem serves as a benchmark for evaluating a model's ability to generate valid configurations under complex constraints. The complexity of the task is directly determined by the parameter $Q$, which dictates the total number of queens that must be accommodated on the board. Complexity levels corresponding to problem instances ranging from $Q=1$ to $Q=7$ queens that are already on board, with lower values of $Q$ representing increasingly difficult reasoning challenges. In our experiments, we randomly sampled train and test experience with different complexity. 
+
+Only the classic $8 \times 8$ board and no augmentation was used, an example of input and target is represented in \ref{fig:n-queens}. We generated 7,200 train and 200 test examples with a sequence length of 64 and a vocabulary size of 3.
+\begin{wrapfigure}{l}{0.24\textwidth}
+    \centering
+    \includegraphics[width=0.26\textwidth]{images/N_queens.png}
+    \caption{Accuracy curves on \texttt{N-Queens} problem.}
+    \label{fig:n-queens_results}
+    \vspace{-5mm}
+\end{wrapfigure}
+
+\textbf{Results}. The purpose of this experiment was to assess the impact of DIS training. As mentioned in \S \ref{sec:dis}, we used T = 1 and n = 2 for DIS, while the regular TRM of T = 3 and n = 6 was applied, with a halting head and 16 supervision steps. We achieved the same 0.69 accuracy while using much fewer inference steps. The architectures of the 0.8 mill parameters were used for both methods. 
+%To evaluate the model's reasoning capabilities under constraints of data scarcity, we utilize the \textit{Sudoku-Extreme} benchmark. This dataset consists of $9 \times 9$ Sudoku puzzles specifically selected for their high difficulty level, distinguishing them from standard Sudoku tasks. The objective is to fill a partially completed grid such that every row, column, and $3 \times 3$ subgrid contains all digits from 1 to 9.
+
+\subsection{\texttt{ARC} Evaluation Protocol}
+\textbf{Task format.} \texttt{ARC} puzzles are sets of colored grids with 2–3 input–output demonstrations and 1–2 test inputs per task; the maximum grid size is $30{\times}30$. Accuracy is scored over all test grids with two attempts permitted per task (standard ARC scoring). We evaluate on the public evaluation sets of \texttt{ARC-AGI-1} (800 tasks) and \texttt{ARC-AGI-2} (1,120 tasks), following TRM. 
+
+\textbf{Data augmentation.} We adopt the augmentation pipeline of TRM to mitigate small-data overfitting: 1000 augmentations per puzzle via color permutations, dihedral-group transforms (90° rotations, flips/reflections) and translations. As in TRM, we also include the 160 ConceptARC tasks as additional training puzzles \cite{moskvichev2023conceptarc}. We attach a puzzle-specific embedding token per instance.
+
+\textbf{Pre-/post-processing.} Inputs and outputs are tokenized as discrete color IDs; we concatenate demonstrations and the target input in the same sequence layout used by TRM, our positional scheme match theirs. 
+
+For evaluation purposes, we apply the majority vote of the TRM to 1,000 augmented inferences per puzzle. Different number of passes are used and we report pass@2 as it is the most common setting. 
+
+\subsection{\texttt{ARC} Model Settings}
+\textbf{Objective.} Each supervision step $s\in\{1,\dots,6\}$ is trained toward a \emph{step-specific intermediate target} $\mathbf{y}^{\dagger}_s$ produced by a discrete corruption schedule of ground truth $\mathbf{y}^\star$ with monotonically decreasing noise. We use token-masking/replacement with a linearly decreasing mask rate over the 6 steps so that $\mathbb{E}[d(\mathbf{y}^{\dagger}_{s},\mathbf{y}^\star)]$ decreases with $s$. The loss is standard token-level cross-entropy on $f_O(\mathbf{y})$ against $\mathbf{y}_s^{\dagger}$, with linearly increasing step weights $w_s$ to emphasize late-step fidelity.
+
+\textbf{Optimization.} We follow TRM’s stable training recipe wherever applicable: Adam-Atan with $\beta_1{=}0.9,\ \beta_2{=}0.95$, a 2k-step warm-up, and the stable-max cross-entropy variant for stability. For ARC experiments, we use weight decay 0.1 and we did not find EMA important. 
+
+We match the hidden size of the TRM $D{=}512$ \textbf{and call it the medium model} in Table \ref{tab:performance}. When we use $D{=}256$ and the single decoder layer model, which results in 0.8 mil. parameters, \textbf{we call it compact}. Also, we match batch sizing; embedding LR warm-up and an elevated embedding LR (as in TRM) are retained. 
+
+\textbf{Deep improvement supervision loop.} For each mini-batch we run $N_{\text{sup}}{=}6$ DIS steps. At each step, we execute a single external cycle (since $T{=}1$) comprising two internal latent/answer updates ($n{=}2$), backpropagating through the full cycle; we then detach $(\mathbf{y},\mathbf{z})$ before the next step. We \textbf{do not} train a halting/ACT head. 
+
+Importantly, when using a discrete diffusion model, the supervision trajectories are generated/sampled on the fly, as in a regular diffusion process. Therefore, for the same task, \emph{we can have various diffusion steps} towards the target. 
+
+\textbf{Test-time compute.} We run the \textbf{same $N_{\text{sup}}{=}6$ steps} at evaluation. To compare fairly with prior \texttt{ARC} protocols, we keep TRM’s test-time augmentation vote: run the model across 1000 geometric/color augmentations of a puzzle and return the most common prediction.
+
+\subsection{\texttt{ARC} Results}
+For our experiments, we replicated the TRM experiments and achieved slightly lower results than those reported in the original paper. We also re-implemented TRM with the same hyperparameter settings as in our \textit{medium} model to compare the methods with identical resources, we set $T=1$, $n=2$, but still use $N_{\text{sup}}{=}16$ for TRM, because the halting mechanism remained active. In addition, we implemented a smaller network to reproduce a compact model consisting of only 0.8 million parameters.  
+
+\begin{table}[h!]
+\centering
+\caption{Model Performance Comparison, pass@2}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Method} & \textbf{Params} & \textbf{ARC-1} & \textbf{ARC-2} \\
+\midrule
+\multicolumn{4}{l}{\textbf{Chain-of-thought, pretrained}} \\
+\midrule
+Deepseek R1 & 671B & 15.8 & 1.3 \\
+Claude 3.7 16K & ? & 28.6 & 0.7 \\
+o3-mini-high & ? & 34.5 & 3.0 \\
+Gemini 2.5 Pro 32K & ? & 37.0 & 4.9 \\
+Grok-4-thinking & 1.7T & 66.7 & 16.0 \\
+Bespoke (Grok-4) & 1.7T & \textbf{79.6} & \textbf{29.4} \\
+\midrule
+\multicolumn{4}{l}{\textbf{Small-sample training}} \\
+\midrule
+TRM-compact  & 0.8M & 12.0 & 0.0 \\
+DIS-compact (Ours) & 0.8M & \cellcolor{blue!18}{24.0} & 0.0 \\
+\midrule
+TRM-medium  & 7M & 27.1 & 0.0 \\
+DIS-medium (Ours) & 7M & \cellcolor{blue!18}{40.0} & \cellcolor{blue!18}{2.5} \\
+\midrule
+TRM  & 7M & 40.4 & \cellcolor{blue!18}{3.3} \\
+DIS & 7M & \cellcolor{blue!18}{41.3} & ? \\
+\bottomrule
+\end{tabular}
+\label{tab:performance}
+\end{table}
+
+\begin{figure}[h!]
+    \centering
+        \includegraphics[width=0.23\textwidth]{images/compact.png}
+        \hfill
+        \includegraphics[width=0.23\textwidth]{images/medium.png}
+    \caption{The DIS and TRM models pass@2 scores under the compact (left) and medium (right) setups.}
+    \label{fig:comparison}
+    \vspace{-4mm}
+\end{figure}
+
+The results are presented in Table \ref{tab:performance} and Figure \ref{fig:comparison}. As shown, for the compact model we dramatically outperform the original TRM. This shows that for TRM, latent reasoning steps are important. We reduced the total number of latent steps nine times and achieved a significant improvement in performance. However, explicit supervision of each step can overcome this drawback by simplifying the task for the TRM, meaning that longer latent reasoning is unnecessary.  Furthermore, our medium model outperforms the medium TRM and achieves results comparable to the original TRM.
+
+\textbf{Shaped credit assignment across supervision steps.}
+In baseline TRM, every step is trained directly against $\mathbf{y}^\star$, leaving it to the model to discover a self-improvement curriculum 
+DIS supplies \emph{explicit} intermediate targets $\{\mathbf{y}^{\dagger}_s\}$, aligning the step-$s$ gradients with a concrete improvement objective. This reduces the burden on the latent state $\mathbf{z}$ to implicitly encode a stepwise plan and can accelerate optimization in scarce-data regimes, where TRM has been shown to be the most effective. DIS retains TRM’s minimal two-feature interface $(\mathbf{y},\mathbf{z})$, single tiny network reused for both updates, and the schedule of $T{-}1$ no-grad cycles followed by one grad cycle. It inherits the simplicity advantages of TRM while changing only the supervision signal.
+
+\textbf{Compute and stability.}
+With a monotone schedule, DIS turns each supervision step into a measurable sub-goal. We preserves TRM’s compute profile per step (one gradient-bearing recursion cycle) and and avoid HRM/TRM-style ACT. If targets are generated offline, the runtime overhead is negligible; if produced online (e.g., by a teacher model), they can be cached or amortized across epochs. For training we used the same 4 \texttt{GPU H100} setting as TRM, but learning takes $\approx 40$ hours against $72$ in TRM. 
+% -------------------------------
+\section{Discussion}
+\textbf{Potential algorithmic improvements.}
+A key limitation of the current implementation is the use of a fixed number of supervision steps for every \texttt{ARC} task. However, task complexity varies significantly; some tasks may benefit from a higher number of denoising steps, while others require fewer. This observation aligns with findings from the original TRM paper, which highlighted the significant contribution of the halting mechanism to final performance. Therefore, explicitly predicting the necessary number of denoising steps for each task could potentially enhance overall model efficiency and accuracy. 
+
+Another promising direction for technical improvement involves adopting a discrete latent space. This approach has been successfully utilized in deep learning architectures such as the Dreamer model~\cite{hafner2019dream} and VQ-VAE~\cite{razavi2019generating}, where latent spaces have proven to be robust and scalable for generative tasks.
+
+\textbf{Alternative Improvement Generators.}
+As outlined in \S \ref{sec:dis:algorithm}, there are several viable methods for generating intermediate steps. While the discrete diffusion prior (Figure \ref{fig:diffusion_full}) serves as the primary source in this work, our framework is designed to support various step-generation approaches.
+
+We also investigated the use of LLM-generated trajectories between transition samples and their targets, specifically utilizing the Gemini 2.5 Pro model. We trained a compact network (0.8 million parameters) on these trajectories; however, this method underperformed compared to the diffusion prior. 
+
+We hypothesize that LLM-generated trajectories fail to provide a monotonic improvement path, often introducing highly nonlinear "jumps" between intermediate steps that are difficult for a small model to capture. 
+
+Consequently, the model trained with LLM improvement supervision achieved only 10\% accuracy, compared to the 24\% achieved with the diffusion prior. Exploring code-based generation of intermediate steps remains a promising direction for future work to improve the algorithm's performance.
+
+\section{Conclusion}
+\label{sec:dis:summary}
+We demonstrate that small, iterative reasoning models can achieve competitive performance on complex reasoning tasks such as the Abstraction and Reasoning Corpus, challenging the dominance of large-scale language models. By reinterpreting TRMs through the lens of reinforcement learning, we reveal that TRMs implicitly perform policy improvement, where a latent "working memory" state guides the model toward better solutions over recursive steps. 
+
+The key contribution is Deep Improvement Supervision, builds on this insight by introducing a structured, stepwise training regime. DIS provides intermediate targets through a discrete diffusion process, transforming the challenging problem of long-term credit assignment into a more tractable supervised learning task \cite{ho2022classifier, frans2025diffusion}. This approach not only simplifies training by eliminating the need for learned halting mechanisms but also enhances efficiency, reducing the number of forward passes by 18x with high accuracy.
+
+
+
+
+
+
+% \bibliographystyle{plain}
+% \bibliography{main}
+% {\small
+% \bibliographystyle{plainnat}
+% \bibliography{references}
+% }
+
+\bibliography{example_paper}
+\bibliographystyle{icml2026}
+
+\newpage
+\appendix
+\onecolumn
+\section{Analysis}
+\label{app:proofs}
+\begin{figure*}[t!]
+  \centering
+  %\fbox{\rule{0pt}{2in} \rule{0.9\linewidth}{0pt}}
+   \includegraphics[width=1\linewidth]{images/corruption.png}
+
+   \caption{The linear corruption process is shown over six steps, from the initial input at time $t=0$ to the target at time $t=6$. A single training sample is illustrated per task.}
+   \label{fig:diffusion_full}
+\end{figure*}
+
+
+\textbf{Notation and Definitions.}
+Let \(\mathbf{x}\) be the input context. At any reasoning step \(n\), the TRM produces two logit vectors over the vocabulary \(\mathcal{V}\):
+\begin{itemize}
+    \item \(\ell_u^{n} \in \mathbb{R}^{|\mathcal{V}|}\): the \emph{reference} logits (the state \emph{before} the current reasoning step),
+    \item \(\ell_c^{n} \in \mathbb{R}^{|\mathcal{V}|}\): the \emph{conditional} logits (the state \emph{after} the current reasoning step).
+\end{itemize}
+We define the \textbf{Reasoning Residual} as
+\begin{equation*}
+    \Delta \ell^{n} \;=\; \ell_c^{n} - \ell_u^{n}.
+\end{equation*}
+For a guidance scale \(w\ge 0\), define the guided logits \(\ell_w^{n} := \ell_u^{n} + w\,\Delta \ell^{n}\) and the corresponding policy
+\begin{equation*}
+    \pi_w(a) \;=\; \frac{\exp\!\big(\ell_u^{n}[a] + w\,\Delta \ell^{n}[a]\big)}{Z(w)},
+    \qquad
+    Z(w) \;=\; \sum_{k \in \mathcal{V}} \exp\!\big(\ell_u^{n}[k] + w\,\Delta \ell^{n}[k]\big).
+\end{equation*}
+Let \(y^\star\) denote the index of the ground‑truth correct token at the current position. In the proofs below, we \emph{fix a step \(n\)} and drop the superscript \(n\) when unambiguous. We first show the condition under which increasing \(w\) strictly reduces the loss.
+
+\begin{proposition}[Advantage Margin Condition]
+\label{prop:margin_proof}
+Let \(\mathcal{L}(w) = -\log \pi_w(y^\star)\) be the cross‑entropy loss of the correct token \(y^\star\).
+Then \(\frac{d}{dw}\mathcal{L}(w) < 0\) if and only if
+\begin{equation*}
+    \Delta \ell[y^\star] \;>\; \mathbb{E}_{a \sim \pi_w}\big[\Delta \ell[a]\big].
+\end{equation*}
+Moreover,
+\[
+\frac{d}{dw}\mathcal{L}(w)=\mathbb{E}_{a \sim \pi_w}[\Delta \ell[a]]-\Delta \ell[y^\star],
+\qquad
+\frac{d^2}{dw^2}\mathcal{L}(w)=\mathrm{Var}_{a\sim \pi_w}\!\big[\Delta \ell[a]\big]\ge 0.
+\]
+\end{proposition}
+
+\begin{proof}
+Write \(\ell_w=\ell_u+w\,\Delta\ell\).
+\begin{align*}
+    \mathcal{L}(w)
+    &= -\log \left( \frac{\exp(\ell_w[y^\star])}{Z(w)} \right)
+     \;=\; -\ell_w[y^\star] + \log Z(w) \\
+    &= -\big(\ell_u[y^\star] + w\,\Delta \ell[y^\star]\big)
+       + \log \sum_{k \in \mathcal{V}} \exp\big(\ell_u[k] + w\, \Delta \ell[k]\big).
+\end{align*}
+The derivative of the linear term is \(-\Delta \ell[y^\star]\).
+Let \(E_k = \exp(\ell_u[k] + w\, \Delta \ell[k])\), so \(Z(w) = \sum_k E_k\). Then
+\[
+\frac{d}{dw} \log Z(w)
+= \frac{1}{Z(w)} \sum_{k} E_k \,\Delta \ell[k]
+= \sum_{k} \frac{E_k}{Z(w)}\,\Delta \ell[k]
+= \mathbb{E}_{a \sim \pi_w}\!\big[\Delta \ell[a]\big].
+\]
+Combining the two derivatives yields
+\[
+\frac{d}{dw}\mathcal{L}(w) \;=\; -\Delta \ell[y^\star] + \mathbb{E}_{a \sim \pi_w}\!\big[\Delta \ell[a]\big],
+\]
+which is negative exactly when the stated inequality holds. Differentiating once gives
+\(\frac{d^2}{dw^2}\mathcal{L}(w)=\mathrm{Var}_{a\sim \pi_w}[\Delta \ell[a]]\ge 0\).
+\end{proof}
+
+\noindent
+Thus, reasoning (the residual \(\Delta \ell\)) helps iff it boosts the correct class \(y^\star\) \emph{more than} it boosts a typical alternative (the policy‑weighted average).
+
+\subsection{Global Convergence}
+\label{app:proofs_lyapunov}
+
+While Proposition~\ref{prop:margin_proof} guarantees a \emph{local} improvement as \(w\) increases, we also analyze the sequential process with a Lyapunov‑style argument.
+
+\begin{proposition}[Discrete Lyapunov Contraction]
+\label{proposition:dis_contraction}
+Let \(d(\hat{y}, y^\star)\) be a bounded distance metric (e.g., Hamming distance) between a predicted sequence \(\hat{y}\) and the ground truth \(y^\star\).
+Define the potential at step \(n\) as \(V_n := d(\mathrm{argmax}(\ell_c^n), y^\star)\).
+Assume:
+\begin{enumerate}
+    \item \textbf{Strictly Improving Targets.} A generator \(\Phi\) yields \(\mathbf{y}^\dagger_0,\dots,\mathbf{y}^\dagger_N\) with
+    \[
+       d(\mathbf{y}^\dagger_n, y^\star) \;\le\; d(\mathbf{y}^\dagger_{n-1}, y^\star) - \delta
+       \quad\text{for some }\delta>0.
+    \]
+    \item \textbf{Training Minimization.} The model minimizes \(\mathcal{L}_n=\mathrm{CE}(\ell_c^n,\mathbf{y}^\dagger_n)\) so that
+    \(\mathrm{argmax}(\ell_c^n)=\mathbf{y}^\dagger_n\) with high probability.
+\end{enumerate}
+Then \(V_n - V_{n-1} \le -\delta < 0\). Consequently, \(V_n\) decreases monotonically and hits \(0\) in at most \(\lceil V_0/\delta \rceil\) steps.
+\end{proposition}
+
+\begin{proof}
+By Assumption 2, \(\mathrm{argmax}(\ell_c^n)\approx \mathbf{y}^\dagger_n\), hence
+\(V_n \approx d(\mathbf{y}^\dagger_n, y^\star)\) and \(V_{n-1}\approx d(\mathbf{y}^\dagger_{n-1}, y^\star)\).
+Assumption 1 gives \(d(\mathbf{y}^\dagger_n, y^\star) \le d(\mathbf{y}^\dagger_{n-1}, y^\star)-\delta\), therefore
+\(V_n \le V_{n-1}-\delta\). Since \(V_n\ge 0\), the bound on the hitting time follows.
+\end{proof}
+
+\begin{proposition}[Guaranteed Improvement]
+\label{proposition:contraction}
+Assume the target generator \(\Phi\) provides strictly improving targets such that the likelihood ratio
+\(\log \frac{P(\mathbf{y}^\dagger_{n})}{P(\mathbf{y}^\dagger_{n-1})} > 0\) (with respect to a fixed scoring distribution \(P\) over sequences).
+Then minimizing the sequential loss \(\mathcal{L}_{\text{DIS}}\) drives the \emph{expected} Advantage Margin to be positive:
+\begin{equation*}
+\mathbb{E}\!\left[\;\Delta\ell[y^\star] \;-\; \mathbb{E}_{a\sim \pi_w}\Delta\ell[a]\;\right] \;>\; 0,
+\qquad \text{for any fixed } w\ge 0.
+\end{equation*}
+\end{proposition}
+
+\begin{proof}
+\textbf{1. Optimal‑logit approximation.}
+Assume sufficient capacity and that \(\mathcal{L}_{\text{DIS}}\) is minimized. Then for some constants \(C_1,C_2\) (independent of \(a\)),
+\[
+    \ell_c^n \;\approx\; \log P(\cdot \mid \mathbf{y}^\dagger_n) + C_1,
+    \qquad
+    \ell_u^n \;\approx\; \log P(\cdot \mid \mathbf{y}^\dagger_{n-1}) + C_2.
+\]
+
+\textbf{2. Residual as a likelihood ratio.}
+Taking the difference eliminates constants:
+\[
+    \Delta \ell
+    \;=\; \ell_c^n - \ell_u^n
+    \;\approx\; \log \frac{P(\cdot \mid \mathbf{y}^\dagger_n)}{P(\cdot \mid \mathbf{y}^\dagger_{n-1})}.
+\]
+
+\textbf{3. Margin at the ground‑truth class.}
+For the correct token \(y^\star\),
+\[
+    \Delta \ell[y^\star]
+    \;\approx\;
+    \log \frac{P(y^\star \mid \mathbf{y}^\dagger_n)}{P(y^\star \mid \mathbf{y}^\dagger_{n-1})}
+    \;>\; 0
+\]
+by the “strictly improving targets” premise.
+
+\textbf{4. Policy‑weighted average.}
+As the targets sharpen toward \(y^\star\), probability mass shifts into \(y^\star\) and away from incorrect tokens. Consequently, under any fixed \(\pi_w\) (with \(w\ge 0\)),
+\(\mathbb{E}_{a\sim \pi_w}\Delta \ell[a] < \Delta \ell[y^\star]\).
+Taking expectation over data (and model stochasticity) yields the stated inequality.
+\end{proof}
+% \textbf{Notation and Definitions.}
+% Let $\mathbf{x}$ be the input context. At any reasoning step $s$, the TRM produces two logit vectors over the vocabulary $\mathcal{V}$:
+% \begin{itemize}
+%     \item $\ell_u^s \in \mathbb{R}^{|\mathcal{V}|}$: The reference logits (the state \textit{before} the current reasoning step).
+%     \item $\ell_c^s \in \mathbb{R}^{|\mathcal{V}|}$: The conditional logits (the state \textit{after} the current reasoning step).
+% \end{itemize}
+% We define the \textbf{Reasoning Residual} $\Delta \ell^s$ as the update vector proposed by the layer:
+% \begin{equation}
+%     \Delta \ell^s = \ell_c^s - \ell_u^s\nonumber
+% \end{equation}
+% At test time, we define a guided policy $\pi_w$ with guidance scale $w$. The probability of token $a$ is given by the softmax of the guided logits:
+% \begin{equation}
+%     \pi_w(a) = \frac{\exp(\ell_u^s[a] + w \cdot \Delta \ell^s[a])}{Z(w)}\nonumber
+% \end{equation}
+% $\text{where } Z(w) = \sum_{k \in \mathcal{V}} \exp(\ell_u^s[k] + w \cdot \Delta \ell^s[k])$. Let $\mathbf{y}$ be the index of the ground-truth correct token.
+
+% We first show the condition under which applying reasoning (increasing $w$) mathematically guarantees a reduction in loss.
+
+% \begin{proposition}[The Advantage Margin Condition]
+% \label{prop:margin_proof}
+% Let $\mathcal{L}(w) = -\log \pi_w(\mathbf{y})$ be the cross-entropy loss of the correct token $\mathbf{y}$. The loss strictly decreases as guidance increases ($\frac{d}{dw}\mathcal{L}(w) < 0$) if and only if:
+% \begin{equation}
+%     \Delta \ell[\mathbf{y}] > \mathbb{E}_{a \sim \pi_w}[\Delta \ell[a]]\nonumber
+% \end{equation}
+% \end{proposition}
+
+% \begin{proof}
+% We differentiate the loss function with respect to $w$ step-by-step.
+% Expand the loss definition.
+% \begin{align}
+%     \mathcal{L}(w) &= -\log \left( \frac{\exp(\ell_w[\mathbf{y}])}{Z(w)} \right) \\\nonumber
+%     &= -\ell_w[\mathbf{y}] + \log Z(w) \\\nonumber
+%     &= -(\ell_u[\mathbf{y}] + w \Delta \ell[\mathbf{y}]) + \log \sum_{k \in \mathcal{V}} \exp(\ell_u[k] + w \Delta \ell[k])\nonumber
+% \end{align}
+% The derivative of the linear term $-(\ell_u[\mathbf{y}] + w \Delta \ell[\mathbf{y}])$ with respect to $w$ is simply:
+% \begin{equation}
+%     \frac{d}{dw} \big( -\ell_u[\mathbf{y}] - w \Delta \ell[\mathbf{y}] \big) = -\Delta \ell[\mathbf{y}]\nonumber
+% \end{equation}
+
+% We use the chain rule. Let $E_k = \exp(\ell_u[k] + w \Delta \ell[k])$. Then $Z(w) = \sum_k E_k$.
+% \begin{align}
+%     \frac{d}{dw} \log Z(w) &= \frac{1}{Z(w)} \cdot \frac{d}{dw} Z(w) \\\nonumber
+%     &= \frac{1}{Z(w)} \cdot \sum_{k} \frac{d}{dw} \exp(\ell_u[k] + w \Delta \ell[k]) \\\nonumber
+%     &= \frac{1}{Z(w)} \cdot \sum_{k} \exp(\ell_u[k] + w \Delta \ell[k]) \cdot \Delta \ell[k] \quad \\\nonumber
+%     &= \sum_{k} \underbrace{\frac{\exp(\ell_w[k])}{Z(w)}}_{\pi_w(k)} \cdot \Delta \ell[k] \\\nonumber
+%     &= \mathbb{E}_{a \sim \pi_w} [\Delta \ell[a]]
+% \end{align}
+% This result shows that the derivative of the log-normalizer is the expected value of the residual. Substituting Step 2 and Step 3 back into the loss gradient:
+% \begin{equation}
+%     \frac{d}{dw}\mathcal{L}(w) = -\Delta \ell[\mathbf{y}] + \mathbb{E}_{a \sim \pi_w} [\Delta \ell[a]]\nonumber
+% \end{equation}
+% For improvement, we need the gradient to be negative ($\frac{d}{dw}\mathcal{L} < 0$):
+% \begin{align}
+%     -\Delta \ell[\mathbf{y}] + \mathbb{E}_{a \sim \pi_w} [\Delta \ell[a]] &< 0 \\\nonumber
+%     \Delta \ell[\mathbf{y}] &> \mathbb{E}_{a \sim \pi_w} [\Delta \ell[a]]\nonumber
+% \end{align}
+% \end{proof}
+
+% This confirms that reasoning (the vector $\Delta \ell$) helps if and only if it pushes the correct answer $\mathbf{y}$ \textit{harder} than it pushes the previous answer.
+
+% % \begin{proposition}[Implicit Anchoring via Induction]
+% % \label{proposition:dis_induction}
+% % Assume the model minimizes the single-step loss $\mathcal{L}_s = \mathrm{CE}(\ell_c^s, \mathbf{y}^\dagger_s)$ to an error margin $\epsilon \to 0$. Then, for any step $s > 0$, the Reasoning Residouble $\Delta \ell^s$ approximates the vector difference between the current target and the previous target.
+% % \end{proposition}
+
+% % \begin{proof}
+% % We prove this by trivially examining the data flow between supervision steps. In the TRM architecture, the input state for step $s$ is initializing using the output state of step $s-1$.
+% % \begin{equation}
+% %     \ell_u^s \equiv \ell_c^{s-1}\nonumber
+% % \end{equation}
+% % This is the definition of the recurrent loop: the "Reference" for the current step is the "Result" of the previous step.
+
+% % Assume that at step $s-1$, the model successfully minimized the loss $\mathrm{CE}(\ell_c^{s-1}, \mathbf{y}^\dagger_{s-1})$. This implies the distribution of logits $\ell_c^{s-1}$ converged toward the target $\mathbf{y}^\dagger_{s-1}$.
+% % \begin{equation}
+% %     \ell_c^{s-1} \approx \mathbf{v}_{\mathbf{y}^\dagger_{s-1}} \quad \implies \quad \ell_u^s \approx \mathbf{v}_{\mathbf{y}^\dagger_{s-1}}\nonumber
+% % \end{equation}
+% % where $\mathbf{v}_{t}$ is the logit vector maximizing probability for target $t$. Now, at step $s$, we explicitly minimize $\mathrm{CE}(\ell_c^s, \mathbf{y}^\dagger_s)$. This forces:
+% % \begin{equation}
+% %     \ell_c^s \approx \mathbf{v}_{\mathbf{y}^\dagger_s}\nonumber
+% % \end{equation}
+
+% % By definition, $\Delta \ell^s = \ell_c^s - \ell_u^s$. Substituting the approximations from training:
+% % \begin{equation}
+% %     \Delta \ell^s \approx \mathbf{v}_{\mathbf{y}^\dagger_s} - \mathbf{v}_{\mathbf{y}^\dagger_{s-1}}\nonumber
+% % \end{equation}
+
+% % Since the schedule $\Phi$ guarantees that $\mathbf{y}^\dagger_s$ is a better target than $\mathbf{y}^\dagger_{s-1}$, the vector $\Delta \ell^s$ represents the shift from a worse solution to a better solution.
+% % Therefore, $\Delta \ell^s$ will have a large positive value for the correct index (improving towards $\mathbf{y}^\dagger_s$) and a negative value for incorrect indices (moving away from $\mathbf{y}^\dagger_{s-1}$).
+% % This satisfies the condition $\Delta \ell[\mathbf{y}] > \mathbb{E}[\Delta \ell]$ from Proposition \ref{prop:margin_proof}.
+% % \end{proof}
+
+
+
+% % Even though we only explicitly supervise the \textit{output} of each step ($\ell_c$), the sequential nature of the loop means we are implicitly anchoring the \textit{input} ($\ell_u$) to the previous step's target. This forces the network to learn the difference (or gradient) between the sequential targets.
+
+% \subsection{Global Convergence}
+% \label{app:proofs_lyapunov}
+
+% While Proposition \ref{prop:margin_proof} guarantees that increasing guidance improves the result locally, we must also prove that the entire sequential process converges to the correct solution $\mathbf{y}^\star$. We frame this using a Lyapunov stability argument.
+
+% \begin{proposition}[Discrete Lyapunov Contraction]
+% \label{proposition:dis_contraction}
+% Let $d(\hat{y}, \mathbf{y}^\star)$ be a bounded distance metric (e.g., Hamming distance) between a predicted sequence $\hat{y}$ and the ground truth $\mathbf{y}^\star$.
+% Define the Lyapunov function (potential) at step $s$ as $V_s = d(\mathrm{argmax}(\ell_c^s), \mathbf{y}^\star)$.
+
+% Assume the following conditions:
+% \begin{enumerate}
+%     \item \textbf{Strictly Improving Targets:} The target generator $\Phi$ produces a sequence $\mathbf{y}^\dagger_0, \dots, \mathbf{y}^\dagger_N$ such that $d(\mathbf{y}^\dagger_s, \mathbf{y}^\star) \le d(\mathbf{y}^\dagger_{s-1}, \mathbf{y}^\star) - \delta$ for some strictly positive increment $\delta > 0$.
+%     \item \textbf{Training Minimization:} The model minimizes the single-loss objective $\mathcal{L}_s = \mathrm{CE}(\ell_c^s, \mathbf{y}^\dagger_s)$ such that the output $\mathrm{argmax}(\ell_c^s) = \mathbf{y}^\dagger_s$ with high probability.
+% \end{enumerate}
+
+% Then, the system satisfies the Lyapunov stability criterion:
+% \begin{equation}
+%     V_s - V_{s-1} \le -\delta < 0
+% \end{equation}
+% \end{proposition}
+
+% \begin{proof}
+% We examine the trajectory of the potential function $V_s$ across the recurrent steps.
+
+% \textbf{1. Connection to Supervision:}
+% By Condition 2 (Training Minimization), the model's conditional output at step $s$ aligns with the target for that step:
+% \begin{equation}
+%     \mathrm{argmax}(\ell_c^s) \approx \mathbf{y}^\dagger_s
+% \end{equation}
+
+% \textbf{2. Substitution into Potential:}
+% Substituting this into the definition of $V_s$:
+% \begin{equation}
+%     V_s \approx d(\mathbf{y}^\dagger_s, \mathbf{y}^\star)
+% \end{equation}
+% Similarly, for the previous step $s-1$:
+% \begin{equation}
+%     V_{s-1} \approx d(\mathbf{y}^\dagger_{s-1}, \mathbf{y}^\star)
+% \end{equation}
+
+% \textbf{3. The Contraction:}
+% Using Condition 1 (Strictly Improving Targets), we substitute the inequality:
+% \begin{equation}
+%     d(\mathbf{y}^\dagger_s, \mathbf{y}^\star) \le d(\mathbf{y}^\dagger_{s-1}, \mathbf{y}^\star) - \delta
+% \end{equation}
+% Therefore:
+% \begin{equation}
+%     V_s \le V_{s-1} - \delta
+% \end{equation}
+
+% \textbf{Conclusion:}
+% Since $V_s$ is strictly decreasing and bounded below by 0 (when $\mathbf{y} = \mathbf{y}^\star$), the recurrent reasoning process is asymptotically stable and converges to the ground truth $\mathbf{y}^\star$ in finite steps $N \le \frac{V_0}{\delta}$.
+% \end{proof}
+
+
+% \begin{proposition}[Guaranteed Improvement]
+% \label{proposition:contraction}
+% Assume the target generator $\Phi$ provides strictly improving targets, such that the likelihood ratio $\log \frac{P(\mathbf{y}^\dagger_{s})}{P(\mathbf{y}^\dagger_{s-1})} > 0$. Minimizing the sequential loss $\mathcal{L}_{\text{DIS}}$ drives the expected Advantage Margin to be positive:
+% \begin{equation}
+% \mathbb{E}\big[\Delta\ell[\mathbf{y}^\star] - \mathbb{E}[\Delta\ell]\big] > 0.
+% \end{equation}
+% \end{proposition}
+% \begin{proof}
+% We prove that minimizing $\mathcal{L}_{\text{DIS}}$ satisfies the Advantage Margin condition directly through substitution of the optimal solution.
+
+% \textbf{1. Optimal Logits Assumption:}
+% We assume the TRM has sufficient capacity and has minimized $\mathcal{L}_{\text{DIS}}$ to convergence. This implies the conditional logits $\ell_c^s$ perfectly approximate the log-probabilities of the target distribution defined by $\mathbf{y}^\dagger_s$:
+% \begin{equation}
+%     \ell_c^s \approx \log P(\cdot | \mathbf{y}^\dagger_s) + C_1
+% \end{equation}
+% By the recursive nature of the network (where the input to step $s$ is the output of $s-1$), the reference logits $\ell_u^s$ approximate the previous target distribution:
+% \begin{equation}
+%     \ell_u^s \approx \log P(\cdot | \mathbf{y}^\dagger_{s-1}) + C_2
+% \end{equation}
+
+% \textbf{2. The Reasoning Residual:}
+% The residual vector $\Delta \ell$ is the difference between these logits:
+% \begin{align}
+%     \Delta \ell &= \ell_c^s - \ell_u^s \\
+%     &\approx \log P(\cdot | \mathbf{y}^\dagger_s) - \log P(\cdot | \mathbf{y}^\dagger_{s-1}) \\
+%     &= \log \frac{P(\cdot | \mathbf{y}^\dagger_s)}{P(\cdot | \mathbf{y}^\dagger_{s-1})}
+% \end{align}
+
+% \textbf{3. Evaluating the Margin for the Ground Truth $\mathbf{y}^\star$:}
+% We examine the first term of the Advantage Margin, $\Delta \ell[\mathbf{y}^\star]$:
+% \begin{equation}
+%     \Delta \ell[\mathbf{y}^\star] \approx \log \frac{P(\mathbf{y}^\star | \mathbf{y}^\dagger_s)}{P(\mathbf{y}^\star | \mathbf{y}^\dagger_{s-1})}
+% \end{equation}
+% The proposition's premise states that the generator provides \textit{strictly improving targets}. Mathematically, this means the likelihood of the ground truth $\mathbf{y}^\star$ increases with each step $s$:
+% \begin{equation}
+%     \log \frac{P(\mathbf{y}^\star | \mathbf{y}^\dagger_s)}{P(\mathbf{y}^\star | \mathbf{y}^\dagger_{s-1})} > 0
+% \end{equation}
+% Thus, $\Delta \ell[\mathbf{y}^\star]$ is strictly positive.
+
+% \textbf{4. The Expectation Term:}
+% Assuming the targets are sharpening towards the correct solution (entropy decreases), the average residual over all tokens $\mathbb{E}[\Delta \ell]$ is dominated by the probability mass shifting \textit{into} $\mathbf{y}^\star$ and \textit{out of} incorrect tokens.
+% Therefore, the boost to the correct token dominates the average boost:
+% \begin{equation}
+%     \Delta \ell[\mathbf{y}^\star] > \mathbb{E}[\Delta \ell]
+% \end{equation}
+% This confirms that the expected Advantage Margin is positive.
+% \end{proof}
+\end{document}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% APPENDIX
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\appendix
+\onecolumn
+\section{You \emph{can} have an appendix here.}
+
+You can have as much text here as you want. The main body must be at most $8$
+pages long. For the final version, one more page can be added. If you want, you
+can use an appendix like this one.
+
+The $\mathtt{\backslash onecolumn}$ command above can be kept in place if you
+prefer a one-column appendix, or can be removed if you prefer a two-column
+appendix.  Apart from this possible change, the style (font size, spacing,
+margins, page numbering, etc.) should be kept the same as the main body.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
+
+% This document was modified from the file originally made available by
+% Pat Langley and Andrea Danyluk for ICML-2K. This version was created
+% by Iain Murray in 2018, and modified by Alexandre Bouchard in
+% 2019 and 2021 and by Csaba Szepesvari, Gang Niu and Sivan Sabato in 2022.
+% Modified again in 2023 and 2024 by Sivan Sabato and Jonathan Scarlett.
+% Previous contributors include Dan Roy, Lise Getoor and Tobias
+% Scheffer, which was slightly modified from the 2010 version by
+% Thorsten Joachims & Johannes Fuernkranz, slightly modified from the
+% 2009 version by Kiri Wagstaff and Sam Roweis's 2008 version, which is
+% slightly modified from Prasad Tadepalli's 2007 version which is a
+% lightly changed version of the previous year's version by Andrew
+% Moore, which was in turn edited from those of Kristian Kersting and
+% Codrina Lauth. Alex Smola contributed to the algorithmic style files.

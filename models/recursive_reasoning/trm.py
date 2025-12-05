@@ -73,6 +73,12 @@ class TinyRecursiveReasoningModel_ACTV1Config(BaseModel):
     puzzle_emb_len: int = 16  # if non-zero, its specified to this value
     no_ACT_continue: bool = True  # No continue ACT loss, only use the sigmoid of the halt which makes much more sense
 
+    # DIS config
+    dis_enabled: bool = False
+    dis_max_steps: int = 6
+    dis_schedule: str = "linear"
+    use_step_embedding: bool = False
+
 
 class TinyRecursiveReasoningModel_ACTV1Block(nn.Module):
     def __init__(self, config: TinyRecursiveReasoningModel_ACTV1Config) -> None:
@@ -228,7 +234,12 @@ class TinyRecursiveReasoningModel_ACTV1_Inner(nn.Module):
             self.q_head.weight.zero_()
             self.q_head.bias.fill_(-5)  # type: ignore
 
-    def _input_embeddings(self, input: torch.Tensor, puzzle_identifiers: torch.Tensor):
+    def _input_embeddings(
+        self,
+        input: torch.Tensor,
+        puzzle_identifiers: torch.Tensor,
+        step: Optional[int] = None,
+    ):
         # Token embedding
         embedding = self.embed_tokens(input.to(torch.int32))
 
@@ -259,6 +270,12 @@ class TinyRecursiveReasoningModel_ACTV1_Inner(nn.Module):
             embedding = 0.707106781 * (
                 embedding + self.embed_pos.embedding_weight.to(self.forward_dtype)
             )
+
+        # Step embedding
+        if self.config.use_step_embedding and step is not None:
+            step_tensor = torch.tensor([step], device=input.device, dtype=torch.int32)
+            step_embedding = self.step_emb(step_tensor)  # (1, D)
+            embedding = embedding + step_embedding.unsqueeze(1)
 
         # Scale
         return self.embed_scale * embedding
@@ -293,6 +310,7 @@ class TinyRecursiveReasoningModel_ACTV1_Inner(nn.Module):
         self,
         carry: TinyRecursiveReasoningModel_ACTV1InnerCarry,
         batch: Dict[str, torch.Tensor],
+        step: Optional[int] = None,
     ) -> Tuple[
         TinyRecursiveReasoningModel_ACTV1InnerCarry,
         torch.Tensor,
@@ -304,15 +322,20 @@ class TinyRecursiveReasoningModel_ACTV1_Inner(nn.Module):
 
         # Input encoding
         input_embeddings = self._input_embeddings(
-            batch["inputs"], batch["puzzle_identifiers"]
+            batch["inputs"], batch["puzzle_identifiers"], step=step
         )
 
         # Forward iterations
         it = 0
         z_H, z_L = carry.z_H, carry.z_L
+
+        H_cycles = self.config.H_cycles
+        if self.config.dis_enabled:
+            H_cycles = 1
+
         # H_cycles-1 without grad
         with torch.no_grad():
-            for _H_step in range(self.config.H_cycles - 1):
+            for _H_step in range(H_cycles - 1):
                 for _L_step in range(self.config.L_cycles):
                     z_L = self.L_level(z_L, z_H + input_embeddings, **seq_info)
                 z_H = self.L_level(z_H, z_L, **seq_info)
@@ -360,6 +383,7 @@ class TinyRecursiveReasoningModel_ACTV1(nn.Module):
         self,
         carry: TinyRecursiveReasoningModel_ACTV1Carry,
         batch: Dict[str, torch.Tensor],
+        step: Optional[int] = None,
     ) -> Tuple[TinyRecursiveReasoningModel_ACTV1Carry, Dict[str, torch.Tensor]]:
         # Update data, carry (removing halted sequences)
         new_inner_carry = self.inner.reset_carry(carry.halted, carry.inner_carry)
@@ -375,7 +399,7 @@ class TinyRecursiveReasoningModel_ACTV1(nn.Module):
 
         # Forward inner model
         new_inner_carry, logits, (q_halt_logits, q_continue_logits) = self.inner(
-            new_inner_carry, new_current_data
+            new_inner_carry, new_current_data, step=step
         )
 
         outputs = {
@@ -391,8 +415,11 @@ class TinyRecursiveReasoningModel_ACTV1(nn.Module):
 
             halted = is_last_step
 
+            if self.config.dis_enabled:
+                halted = torch.zeros_like(halted)
+
             # if training, and ACT is enabled
-            if self.training and (self.config.halt_max_steps > 1):
+            elif self.training and (self.config.halt_max_steps > 1):
                 # Halt signal
                 # NOTE: During evaluation, always use max steps, this is to guarantee the same halting steps inside a batch for batching purposes
 
@@ -415,7 +442,7 @@ class TinyRecursiveReasoningModel_ACTV1(nn.Module):
                     # As batch_size is large, there're many parallel envs.
                     # Similar concept as PQN https://arxiv.org/abs/2407.04811
                     _, _, (next_q_halt_logits, next_q_continue_logits), _, _ = (
-                        self.inner(new_inner_carry, new_current_data)
+                        self.inner(new_inner_carry, new_current_data, step=step)
                     )
                     outputs["target_q_continue"] = torch.sigmoid(
                         torch.where(
