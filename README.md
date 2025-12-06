@@ -119,29 +119,64 @@ arch.H_cycles=3 arch.L_cycles=6 \
 ##### Sudoku-Extreme with Fabric TRM 
 
 ```bash
-run_name="pretrain_fabric_sudoku"
+run_name="pretrain_fabric_sudoku-trm"
 torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
 arch=trm \
 data_paths="[data/sudoku-extreme-1k-aug-1000]" \
 evaluators="[]" \
 epochs=50000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
+grad_clip_norm=-1.0 \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=6 \
 +run_name=${run_name} ema=True
 ```
+
+##### Sudoku-Extreme with Fabric TRM (Muon)
+
+```bash
+run_name="pretrain_fabric_sudoku_muon-trm"
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
+arch=trm \
+data_paths="[data/sudoku-extreme-1k-aug-1000]" \
+evaluators="[]" \
+epochs=50000 eval_interval=5000 \
++optimizer=muon \
+lr=0.0003 weight_decay=0.01 \
++muon_lr=0.002 +muon_weight_decay=0.01 \
+puzzle_emb_lr=1e-4 puzzle_emb_weight_decay=1.0 \
+grad_clip_norm=-1.0 \
++run_name=${run_name} ema=True
+```
+
 ##### Sudoku-Extreme with Fabric Loop Transformer
 
 ```bash
-run_name="pretrain_fabric_sudoku"
+run_name="pretrain_fabric_sudoku-loop_tf"
 torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
 arch=loop_transformer \
 data_paths="[data/sudoku-extreme-1k-aug-1000]" \
 evaluators="[]" \
 epochs=50000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
-arch.L_layers=2 \
-arch.H_cycles=3 arch.L_cycles=6 \
+grad_clip_norm=-1.0 \
++run_name=${run_name} ema=True
+```
+
+##### Sudoku-Extreme with Fabric Loop Transformer (Muon)
+
+```bash
+run_name="pretrain_fabric_sudoku_muon-loop_tf"
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
+arch=loop_transformer \
+data_paths="[data/sudoku-extreme-1k-aug-1000]" \
+evaluators="[]" \
+epochs=50000 eval_interval=5000 \
++optimizer=muon \
+lr=0.0003 weight_decay=0.01 \
++muon_lr=0.002 +muon_weight_decay=0.01 \
+puzzle_emb_lr=1e-4 puzzle_emb_weight_decay=1.0 \
+grad_clip_norm=-1.0 \
 +run_name=${run_name} ema=True
 ```
 
