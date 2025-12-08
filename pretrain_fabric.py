@@ -176,7 +176,7 @@ def launch(hydra_config: DictConfig) -> None:
             project=config.project_name,
             name=config.run_name,
             config=config.model_dump(),
-            settings=wandb.Settings(_disable_stats=True),
+            settings=wandb.Settings(_disable_stats=True, init_timeout=300),
         )
         wandb.log(
             {"num_params": sum(x.numel() for x in train_state.model.parameters())},
