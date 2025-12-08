@@ -4,10 +4,8 @@ import os
 from typing import List, Dict
 
 # --- Configuration ---
-# The path to the main training script.
 TRAIN_SCRIPT = "pretrain_fabric.py"
 
-# Fixed Hydra/OmegaConf training parameters (forcing single GPU usage)
 STATIC_OVERRIDES = [
     'data_paths="[data/sudoku-extreme-1k-aug-1000]"',
     'evaluators="[]"',
@@ -16,8 +14,7 @@ STATIC_OVERRIDES = [
     '+optimizer=muon',  
     'grad_clip_norm=-1.0',
     'ema=True',
-    # Key change: Force pretrain_fabric.py to use a single GPU (devices=1)
-    # 'devices=1' 
+    'devices=1' 
 ]
 # --- END Configuration ---
 
@@ -29,40 +26,30 @@ def build_dynamic_overrides(config: Dict) -> List[str]:
     dynamic_args = []
     
     for key, value in config.items():
-        # Convert config value to string for command-line passing
         str_value = str(value)
 
         if key.startswith('arch.'):
-            # Handle nested parameters like arch.L_layers
             dynamic_args.append(f'{key}={str_value}')
         elif key == 'arch':
-            # Handle arch=loop_transformer
             dynamic_args.append(f'arch={str_value}')
         elif key in ['muon_lr', 'muon_weight_decay']:
-            # Handle plus-prefixed parameters: +muon_lr=...
             dynamic_args.append(f'+{key}={str_value}')
         elif key in ['lr', 'weight_decay', 'puzzle_emb_lr', 'puzzle_emb_weight_decay']:
-            # Handle standard parameters: lr=...
             dynamic_args.append(f'{key}={str_value}')
         
     return dynamic_args
 
 def main():
-    # 1. Initialize WandB Run. This is the actual Trial run.
+    # 1. Initialize WandB Run.
     run = wandb.init()
     
-    # 2. Get hyperparameters from the WandB run config
+    # 2. Get hyperparameters and build command
     config = dict(run.config)
-    
-    # Build the list of dynamic arguments
     dynamic_overrides = build_dynamic_overrides(config) 
-    
-    # Construct the run_name parameter using the WandB run name
     run_name_override = f'run_name={run.name}'
     
-    # 3. Construct the full single-GPU training command
     full_command = (
-        ['python', TRAIN_SCRIPT] + # Start with python and script name
+        ['python', TRAIN_SCRIPT] +
         STATIC_OVERRIDES +
         dynamic_overrides +
         [run_name_override]
@@ -73,18 +60,30 @@ def main():
     print(f"Command: {' '.join(full_command)}")
     print("=" * 60)
     
-    # 4. Execute the command
+    # 4. Execute the command and capture output
     try:
-        # Execute the training script as a subprocess.
-        # We do NOT need torchrun or 'env' parameter here, 
-        # as this is a single, isolated process managed by CUDA_VISIBLE_DEVICES.
-        subprocess.run(full_command, check=True)
+        # 💥 关键修改: 捕获输出并确保 check=True
+        result = subprocess.run(
+            full_command, 
+            check=True,
+            capture_output=True, # Capture stdout and stderr
+            text=True            # Decode output to string
+        )
+        # If successful, print any standard output (optional, for debugging)
+        if result.stdout:
+             print("Subprocess STDOUT:\n", result.stdout)
     except subprocess.CalledProcessError as e:
-        print(f"Error executing command: {e}")
-        run.finish(status='crashed')
-        raise
+        print("\n" + "=" * 60)
+        print("CRASH LOG (STDERR) FROM pretrain_fabric.py:")
+        print("=" * 60)
+        print(e.stderr) # <--- THIS IS THE LOG WE NEED!
+        print("=" * 60 + "\n")
+        
+        # 5. Finish Run without status argument
+        run.finish() 
+        raise # Re-raise the exception to terminate the Agent's trial
     
-    # 5. Finish the Run
+    # 5. Finish the Run (Success case)
     run.finish()
 
 if __name__ == "__main__":
