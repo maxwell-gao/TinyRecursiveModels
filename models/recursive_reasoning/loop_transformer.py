@@ -8,6 +8,7 @@ import math
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 from pydantic import BaseModel
 
 from models.common import trunc_normal_init_
@@ -74,6 +75,7 @@ class LoopTransformerConfig(BaseModel):
     act_enabled: bool = True
     act_inference: bool = False
     no_ACT_continue: bool = True
+    gradient_checkpointing: bool = False
 
     outer_cycles: int
     warmup_cycles: Optional[int] = None
@@ -312,11 +314,25 @@ class LoopTransformerInner(nn.Module):
             for _ in range(repeats):
                 injection = self._aggregate_sources(stage, states, input_embeddings)
                 module = self._state_module_refs[stage.target]
-                states[stage.target] = module(
-                    hidden_states=states[stage.target],
-                    input_injection=injection,
-                    **seq_info,
-                )
+
+                if (
+                    self.config.gradient_checkpointing
+                    and self.training
+                    and torch.is_grad_enabled()
+                ):
+                    states[stage.target] = checkpoint(
+                        module,
+                        states[stage.target],
+                        injection,
+                        use_reentrant=False,
+                        **seq_info,
+                    )
+                else:
+                    states[stage.target] = module(
+                        hidden_states=states[stage.target],
+                        input_injection=injection,
+                        **seq_info,
+                    )
 
     def forward(
         self,
