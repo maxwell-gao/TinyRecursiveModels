@@ -59,12 +59,19 @@ def main():
     print(f"Command: {' '.join(full_command)}")
     print("=" * 60)
     
+    # Pass WandB run info to subprocess so it logs to the same run
+    env = os.environ.copy()
+    env["WANDB_RUN_ID"] = run.id
+    env["WANDB_PROJECT"] = run.project
+    env["WANDB_RESUME"] = "allow"
+    
     try:
         result = subprocess.run(
             full_command, 
             check=True,
             capture_output=True,
-            text=True
+            text=True,
+            env=env
         )
         if result.stdout:
              print("Subprocess STDOUT:\n", result.stdout)
