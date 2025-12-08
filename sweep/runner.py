@@ -8,8 +8,8 @@ TRAIN_SCRIPT = "pretrain_fabric.py"
 
 # FIXED: Changed 'devices=1' to '+devices=1' to satisfy Hydra/OmegaConf
 STATIC_OVERRIDES = [
-    'data_paths="[data/sudoku-extreme-1k-aug-1000]"',
-    'evaluators="[]"',
+    'data_paths=[data/sudoku-extreme-1k-aug-1000]',
+    'evaluators=[]',
     'epochs=50000', 
     'eval_interval=5000',
     '+optimizer=muon',  
