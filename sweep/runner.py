@@ -17,7 +17,7 @@ STATIC_OVERRIDES = [
     'grad_clip_norm=-1.0',
     'ema=True',
     # Key change: Force pretrain_fabric.py to use a single GPU (devices=1)
-    'devices=1' 
+    # 'devices=1' 
 ]
 # --- END Configuration ---
 
@@ -85,7 +85,7 @@ def main():
         raise
     
     # 5. Finish the Run
-    run.finish(status='success')
+    run.finish()
 
 if __name__ == "__main__":
     main()
