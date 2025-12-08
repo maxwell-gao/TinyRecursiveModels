@@ -18,7 +18,7 @@ puzzle_emb_len: 16
 
 pos_encodings: rope
 forward_dtype: bfloat16
-dropout: 0.5
+dropout: 0.0
 
 outer_cycles: 3
 warmup_cycles: 2
