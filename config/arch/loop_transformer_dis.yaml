@@ -10,6 +10,7 @@ no_ACT_continue: true
 
 dis_enabled: true
 dis_max_steps: 6
+dis_schedule: linear
 
 hidden_size: 512
 num_heads: 8
