@@ -93,6 +93,9 @@ def train_batch(
                     if torch.isnan(v).any():
                         if fabric.global_rank == 0:
                             print(f"WARNING: Metric {k} is NaN at step {step}")
+                            # Debug logits stats if possible
+                            # We don't have logits here easily unless we return them
+
                 if k not in accumulated_metrics:
                     accumulated_metrics[k] = v
                 else:

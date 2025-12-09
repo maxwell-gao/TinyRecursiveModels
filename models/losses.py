@@ -139,7 +139,7 @@ class ACTLossHead(nn.Module):
 
 
 class CrossEntropyLossHead(nn.Module):
-    def __init__(self, model: nn.Module, loss_type: str = "softmax_cross_entropy"):
+    def __init__(self, model: nn.Module, loss_type: str = "stablemax_cross_entropy"):
         super().__init__()
         self.model = model
         self.loss_fn = globals()[loss_type]
