@@ -146,10 +146,16 @@ def create_model(
     Returns:
         Tuple of (model, optimizers, optimizer_lrs)
     """
+    vocab_size = train_metadata.vocab_size
+    if config.arch.__pydantic_extra__ and config.arch.__pydantic_extra__.get(
+        "dis_enabled", False
+    ):
+        vocab_size += 1
+
     model_cfg = dict(
         **config.arch.__pydantic_extra__,  # type: ignore
         batch_size=config.global_batch_size // fabric.world_size,
-        vocab_size=train_metadata.vocab_size,
+        vocab_size=vocab_size,
         seq_len=train_metadata.seq_len,
         num_puzzle_identifiers=train_metadata.num_puzzle_identifiers,
         causal=False,  # Non-autoregressive

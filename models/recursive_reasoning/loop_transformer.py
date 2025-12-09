@@ -355,6 +355,15 @@ class LoopTransformerInner(nn.Module):
         input_embeddings = self._input_embeddings(batch)
 
         if self.config.dis_enabled and step_ids is not None:
+            # Ensure step_ids is a tensor on the correct device
+            if not isinstance(step_ids, torch.Tensor):
+                step_ids = torch.tensor(
+                    step_ids, device=input_embeddings.device, dtype=torch.long
+                )
+            # If scalar, expand to batch size
+            if step_ids.ndim == 0:
+                step_ids = step_ids.expand(input_embeddings.shape[0])
+
             input_embeddings = input_embeddings + self.step_emb(step_ids).unsqueeze(1)
 
         states = {name: tensor for name, tensor in carry.states.items()}
