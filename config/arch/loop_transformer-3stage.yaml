@@ -41,8 +41,8 @@ stages:
   - target: z_M
     sources: [z_L]
     repeat: 3
-  - target: z_M
-    sources: [z_H]
+  - target: z_H
+    sources: [z_M]
     repeat: 3
 
 readout_state: z_H
