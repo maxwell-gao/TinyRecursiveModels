@@ -69,6 +69,11 @@ def train_batch(
         for optim in train_state.optimizers:
             optim.zero_grad()
 
+        # Generate fixed noise for monotonic masking
+        # B, L
+        B, L = batch["labels"].shape
+        mask_noise = torch.rand(B, L, device="cuda")
+
         for step in range(dis_max_steps):
             # Generate target
             y_true = batch["labels"]
@@ -80,6 +85,7 @@ def train_batch(
                 vocab_size - 1,  # mask_token_id is the last token
                 IGNORE_LABEL_ID,
                 dis_schedule,
+                noise=mask_noise,
             )
 
             batch_step = batch.copy()

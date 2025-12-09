@@ -10,6 +10,7 @@ def get_dis_target(
     mask_token_id: int,
     ignore_label_id: int = -100,
     schedule: str = "linear",
+    noise: torch.Tensor = None,
 ) -> torch.Tensor:
     """
     Generate the target for Deep Improvement Supervision (DIS) at a specific step.
@@ -22,6 +23,7 @@ def get_dis_target(
         mask_token_id: ID of the mask token.
         ignore_label_id: ID to ignore in loss (usually -100).
         schedule: Type of schedule ("linear", "cosine", etc.). Currently only "linear" is supported.
+        noise: Optional pre-generated noise tensor (B, L) for monotonic masking.
 
     Returns:
         y_target: The target tensor for the current step.
@@ -70,8 +72,11 @@ def get_dis_target(
     B, L = y_true.shape
     device = y_true.device
 
-    # Generate random mask
-    rand_vals = torch.rand(B, L, device=device)
+    # Generate random mask if not provided
+    if noise is None:
+        rand_vals = torch.rand(B, L, device=device)
+    else:
+        rand_vals = noise
 
     # Mask where rand_vals < mask_rate
     # But we must respect ignore_label_id (padding)
