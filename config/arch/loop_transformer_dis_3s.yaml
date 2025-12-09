@@ -1,13 +1,17 @@
 name: recursive_reasoning.loop_transformer@LoopTransformerModel_ACT
 loss:
-  name: losses@ACTLossHead
-  loss_type: stablemax_cross_entropy
+  name: losses@CrossEntropyLossHead
+  mask_penalty_weight: 0.5
 
-halt_exploration_prob: 0.1
+halt_exploration_prob: 0.0
 halt_max_steps: 16
-act_enabled: true
+act_enabled: false
 act_inference: false
 no_ACT_continue: true
+
+dis_enabled: true
+dis_max_steps: 6
+dis_schedule: linear
 
 hidden_size: 512
 num_heads: 8
@@ -19,9 +23,6 @@ puzzle_emb_len: 16
 pos_encodings: rope
 forward_dtype: bfloat16
 dropout: 0.0
-
-outer_cycles: 3
-warmup_cycles: 2
 
 states:
   - name: z_H
