@@ -65,6 +65,10 @@ def train_batch(
         metrics = {}
         accumulated_metrics = {}
 
+        # Zero grads before the loop
+        for optim in train_state.optimizers:
+            optim.zero_grad()
+
         for step in range(dis_max_steps):
             # Generate target
             y_true = batch["labels"]
@@ -82,8 +86,13 @@ def train_batch(
             batch_step["labels"] = y_target
 
             # Forward
+            # Pass step as tensor to avoid recompilation if compiled
+            step_tensor = torch.tensor(step, device="cuda", dtype=torch.long)
             train_state.carry, loss, metrics, _, _ = train_state.model(
-                carry=train_state.carry, batch=batch_step, return_keys=[], step=step
+                carry=train_state.carry,
+                batch=batch_step,
+                return_keys=[],
+                step=step_tensor,
             )
 
             # Accumulate metrics
@@ -93,45 +102,41 @@ def train_batch(
                     if torch.isnan(v).any():
                         if fabric.global_rank == 0:
                             print(f"WARNING: Metric {k} is NaN at step {step}")
-                            # Debug logits stats if possible
-                            # We don't have logits here easily unless we return them
 
                 if k not in accumulated_metrics:
                     accumulated_metrics[k] = v
                 else:
                     accumulated_metrics[k] += v
 
-            # Backward
+            # Backward (Accumulate gradients)
             ((1 / global_batch_size) * loss).backward()
 
-            # Allreduce
-            if fabric.world_size > 1:
-                for param in train_state.model.parameters():
-                    if param.grad is not None:
-                        reduced_grad = fabric.all_reduce(param.grad, reduce_op="sum")
-                        param.grad.data.copy_(reduced_grad)
+        # Allreduce once per batch
+        if fabric.world_size > 1:
+            for param in train_state.model.parameters():
+                if param.grad is not None:
+                    reduced_grad = fabric.all_reduce(param.grad, reduce_op="sum")
+                    param.grad.data.copy_(reduced_grad)
 
-            # Optimizer
-            lr_this_step = None
-            for optim, base_lr in zip(
-                train_state.optimizers, train_state.optimizer_lrs
-            ):
-                if isinstance(base_lr, list):
-                    for param_group, group_base_lr in zip(optim.param_groups, base_lr):
-                        lr_this_step = compute_lr(group_base_lr, config, train_state)
-                        param_group["lr"] = lr_this_step
-                else:
-                    lr_this_step = compute_lr(base_lr, config, train_state)
-                    for param_group in optim.param_groups:
-                        param_group["lr"] = lr_this_step
+        # Optimizer step once per batch
+        lr_this_step = None
+        for optim, base_lr in zip(train_state.optimizers, train_state.optimizer_lrs):
+            if isinstance(base_lr, list):
+                for param_group, group_base_lr in zip(optim.param_groups, base_lr):
+                    lr_this_step = compute_lr(group_base_lr, config, train_state)
+                    param_group["lr"] = lr_this_step
+            else:
+                lr_this_step = compute_lr(base_lr, config, train_state)
+                for param_group in optim.param_groups:
+                    param_group["lr"] = lr_this_step
 
-                if config.grad_clip_norm > 0.0:
-                    fabric.clip_gradients(
-                        train_state.model, optim, max_norm=config.grad_clip_norm
-                    )
+            if config.grad_clip_norm > 0.0:
+                fabric.clip_gradients(
+                    train_state.model, optim, max_norm=config.grad_clip_norm
+                )
 
-                optim.step()
-                optim.zero_grad()
+            optim.step()
+            optim.zero_grad()
 
         # Use accumulated metrics for logging
         metrics = accumulated_metrics
