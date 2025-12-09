@@ -109,17 +109,15 @@ class LoopTransformerBlock(nn.Module):
     def forward(
         self, cos_sin: Optional[CosSin], hidden_states: torch.Tensor
     ) -> torch.Tensor:
-        hidden_states = rms_norm(
-            hidden_states
-            + self.dropout(
-                self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states)
-            ),
-            variance_epsilon=self.norm_eps,
+        # Pre-Norm structure for better stability
+        normed_states = rms_norm(hidden_states, variance_epsilon=self.norm_eps)
+        hidden_states = hidden_states + self.dropout(
+            self.self_attn(cos_sin=cos_sin, hidden_states=normed_states)
         )
-        hidden_states = rms_norm(
-            hidden_states + self.dropout(self.mlp(hidden_states)),
-            variance_epsilon=self.norm_eps,
-        )
+
+        normed_states = rms_norm(hidden_states, variance_epsilon=self.norm_eps)
+        hidden_states = hidden_states + self.dropout(self.mlp(normed_states))
+
         return hidden_states
 
 
