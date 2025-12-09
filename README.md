@@ -64,7 +64,7 @@ arch=trm \
 data_paths="[data/arc1concept-aug-1000]" \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=4 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 
 ```
 
@@ -79,7 +79,7 @@ arch=trm \
 data_paths="[data/arc2concept-aug-1000]" \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=4 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 
 ```
 
@@ -98,7 +98,7 @@ lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 arch.mlp_t=True arch.pos_encodings=none \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=6 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 
 run_name="pretrain_att_sudoku"
 torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain.py \
@@ -109,7 +109,7 @@ epochs=50000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=6 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 ```
 
 *Runtime:* < 3 hours
@@ -129,7 +129,7 @@ lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 grad_clip_norm=-1.0 \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=6 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 ```
 
 ##### Sudoku-Extreme with Fabric TRM (Muon)
@@ -146,7 +146,7 @@ lr=0.0003 weight_decay=0.01 \
 +muon_lr=0.002 +muon_weight_decay=0.01 \
 puzzle_emb_lr=1e-4 puzzle_emb_weight_decay=1.0 \
 grad_clip_norm=-1.0 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 ```
 
 ##### Sudoku-Extreme with Fabric Loop Transformer
@@ -160,24 +160,38 @@ evaluators="[]" \
 epochs=50000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 grad_clip_norm=-1.0 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 ```
+
+##### Sudoku-Extreme with Fabric Loop Transformer DIS
+
+```bash
+run_name="pretrain_fabric_sudoku-loop_tf_dis"
+torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
+arch=loop_transformer_dis \
+data_paths="[data/sudoku-extreme-1k-aug-1000]" \
+evaluators="[]" \
+epochs=50000 eval_interval=5000 \
+lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
+grad_clip_norm=-1.0 \
+run_name=${run_name} ema=True
+```
+
 
 ##### Sudoku-Extreme with Fabric Loop Transformer (Muon)
 
 ```bash
-run_name="pretrain_fabric_sudoku_muon-loop_tf"
 torchrun --nproc-per-node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:0 --nnodes=1 pretrain_fabric.py \
 arch=loop_transformer \
-data_paths="[data/sudoku-extreme-1k-aug-1000]" \
-evaluators="[]" \
+data_paths='[data/sudoku-extreme-1k-aug-1000]' evaluators='[]' \
 epochs=50000 eval_interval=5000 \
 +optimizer=muon \
-lr=0.0003 weight_decay=0.01 \
-+muon_lr=0.002 +muon_weight_decay=0.01 \
+lr=0.0003 weight_decay=1.0 \
++muon_lr=0.0005 +muon_weight_decay=1.0 \
 puzzle_emb_lr=1e-4 puzzle_emb_weight_decay=1.0 \
 grad_clip_norm=-1.0 \
-+run_name=${run_name} ema=True
+run_name="pretrain_fabric_sudoku_muon-fixed-wd" \
+ema=True
 ```
 
 ### Maze-Hard (assuming 8 L4 GPUs):
@@ -192,7 +206,7 @@ epochs=50000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=4 \
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 ```
 
 *Runtime:* < 24 hours
@@ -209,7 +223,7 @@ epochs=25000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 arch.L_layers=2 \
 arch.H_cycles=3 arch.L_cycles=4 \
-+run_name=${run_name} ema=True \
+run_name=${run_name} ema=True \
 early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
 ```  
 
@@ -228,7 +242,7 @@ data_paths="[data/maze-30x30-hard-1k]" \
 evaluators="[]" \
 epochs=25000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
-+run_name=${run_name} ema=True \
+run_name=${run_name} ema=True \
 early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
 ```
 
@@ -241,7 +255,7 @@ data_paths="[data/maze-30x30-hard-1k]" \
 evaluators="[]" \
 epochs=25000 eval_interval=5000 \
 lr=5e-5 puzzle_emb_lr=5e-5 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
-+run_name=${run_name} ema=True \
+run_name=${run_name} ema=True \
 early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
 ```
 
@@ -260,7 +274,7 @@ epochs=50000 eval_interval=5000 \
 lr=0.001 weight_decay=0.1 \
 +muon_lr=0.01 +muon_weight_decay=0.1 \
 puzzle_emb_lr=5e-5 puzzle_emb_weight_decay=1.0
-+run_name=${run_name} ema=True
+run_name=${run_name} ema=True
 early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
 ```
 
@@ -277,7 +291,7 @@ evaluators="[]" \
 epochs=25000 eval_interval=5000 \
 lr=1e-4 puzzle_emb_lr=1e-4 weight_decay=1.0 puzzle_emb_weight_decay=1.0 \
 arch.H_layers=8 \
-+run_name=${run_name} ema=True \
+run_name=${run_name} ema=True \
 early_stopping=True early_stopping_patience=5 early_stopping_monitor=exact_accuracy early_stopping_mode=max
 ```
 
