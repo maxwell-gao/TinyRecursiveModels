@@ -162,16 +162,21 @@ class CrossEntropyLossHead(nn.Module):
         logits = outputs["logits"]
 
         # Loss
-        loss = F.cross_entropy(
+        token_losses = F.cross_entropy(
             logits.flatten(0, 1),
             labels.flatten(0, 1),
             ignore_index=IGNORE_LABEL_ID,
-            reduction="sum",
-        )
+            reduction="none",
+        ).view(labels.shape)
+
+        mask = labels != IGNORE_LABEL_ID
+        loss_counts = mask.sum(-1)
+        loss_divisor = loss_counts.clamp_min(1)
+
+        loss = (token_losses.sum(-1) / loss_divisor).sum()
 
         # Metrics
         with torch.no_grad():
-            mask = labels != IGNORE_LABEL_ID
             preds = torch.argmax(logits, dim=-1)
 
             # Per-token correctness
