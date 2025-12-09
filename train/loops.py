@@ -88,6 +88,14 @@ def train_batch(
                 noise=mask_noise,
             )
 
+            # CRITICAL FIX: Protect input clues from being masked
+            # If input == label, it means the answer is already given in the input (e.g. Sudoku clues).
+            # We must NOT mask these, otherwise the model learns to ignore inputs.
+            # Note: batch["inputs"] and batch["labels"] must be aligned.
+            if "inputs" in batch and batch["inputs"].shape == batch["labels"].shape:
+                is_clue = batch["inputs"] == batch["labels"]
+                y_target = torch.where(is_clue, y_true, y_target)
+
             batch_step = batch.copy()
             batch_step["labels"] = y_target
 
