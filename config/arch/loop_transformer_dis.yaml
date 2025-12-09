@@ -29,9 +29,9 @@ warmup_cycles: 0
 states:
   - name: z
     layers: 1
-    
+
 stages:
-  - target: z_L
+  - target: z
     include_inputs: true
     repeat: 2
 
