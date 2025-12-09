@@ -139,7 +139,7 @@ class ACTLossHead(nn.Module):
 
 
 class CrossEntropyLossHead(nn.Module):
-    def __init__(self, model: nn.Module, loss_type: str = "softmax_cross_entropy"):
+    def __init__(self, model: nn.Module, loss_type: str = "stablemax_cross_entropy"):
         super().__init__()
         self.model = model
         self.loss_fn = globals()[loss_type]
@@ -165,12 +165,13 @@ class CrossEntropyLossHead(nn.Module):
         else:
             labels = model_kwargs["batch"]["labels"]
 
+        mask = labels != IGNORE_LABEL_ID
+
         with torch.no_grad():
             # Preds
             outputs["preds"] = torch.argmax(outputs["logits"], dim=-1)
 
             # Correctness
-            mask = labels != IGNORE_LABEL_ID
             loss_counts = mask.sum(-1)
             loss_divisor = loss_counts.clamp_min(1).unsqueeze(
                 -1
@@ -194,12 +195,18 @@ class CrossEntropyLossHead(nn.Module):
                 metrics["steps"] = torch.where(valid_metrics, new_carry.steps, 0).sum()
 
         # Losses
-        lm_loss = (
-            self.loss_fn(
-                outputs["logits"], labels, ignore_index=IGNORE_LABEL_ID, valid_mask=mask
-            )
-            / loss_divisor
-        ).sum()
+        # Use global mean for stability
+        per_token_loss = self.loss_fn(
+            outputs["logits"], labels, ignore_index=IGNORE_LABEL_ID, valid_mask=mask
+        )
+
+        # Sum all losses
+        total_loss = per_token_loss.sum()
+
+        # Total valid tokens
+        total_tokens = mask.sum().clamp_min(1).float()
+
+        lm_loss = total_loss / total_tokens
 
         metrics.update(
             {
