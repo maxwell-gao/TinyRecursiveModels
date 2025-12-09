@@ -13,6 +13,7 @@ import shutil
 import yaml
 import subprocess
 
+import torch
 import torch.distributed as dist
 import tqdm
 import wandb
@@ -92,6 +93,8 @@ def launch(hydra_config: DictConfig) -> None:
     - Single GPU: python pretrain_fabric.py
     - Multi-GPU via torchrun: torchrun --nproc-per-node 4 pretrain_fabric.py
     """
+    # Set matmul precision for better performance on Ampere+ GPUs
+    torch.set_float32_matmul_precision("high")
 
     # Determine if launched via torchrun (sets LOCAL_RANK env var)
     is_torchrun = "LOCAL_RANK" in os.environ
@@ -172,7 +175,9 @@ def launch(hydra_config: DictConfig) -> None:
     ema_helper = None
 
     if fabric.global_rank == 0:
-        progress_bar = tqdm.tqdm(total=train_state.total_steps, initial=train_state.step)
+        progress_bar = tqdm.tqdm(
+            total=train_state.total_steps, initial=train_state.step
+        )
         wandb.init(
             project=config.project_name,
             name=config.run_name,

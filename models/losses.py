@@ -166,19 +166,40 @@ class CrossEntropyLossHead(nn.Module):
             logits.flatten(0, 1),
             labels.flatten(0, 1),
             ignore_index=IGNORE_LABEL_ID,
+            reduction="sum",
         )
 
         # Metrics
         with torch.no_grad():
             mask = labels != IGNORE_LABEL_ID
             preds = torch.argmax(logits, dim=-1)
-            correct = (preds == labels) & mask
-            accuracy = correct.sum() / mask.sum().clamp(min=1)
+
+            # Per-token correctness
+            is_correct = (preds == labels) & mask
+
+            # Per-sequence stats
+            valid_tokens_per_seq = mask.sum(dim=-1)
+            correct_tokens_per_seq = is_correct.sum(dim=-1)
+
+            # Avoid division by zero for sequences with no valid tokens
+            seq_len_safe = valid_tokens_per_seq.clamp(min=1)
+
+            # Per-sequence accuracy (0.0 to 1.0)
+            seq_accuracy = correct_tokens_per_seq.float() / seq_len_safe
+
+            # Sequence is correct if all valid tokens are correct AND there was at least one valid token
+            seq_is_correct = (correct_tokens_per_seq == valid_tokens_per_seq) & (
+                valid_tokens_per_seq > 0
+            )
+
+            # Filter for sequences that have at least one valid token
+            valid_seq_mask = valid_tokens_per_seq > 0
 
             metrics = {
                 "loss": loss.detach(),
-                "accuracy": accuracy,
-                "count": mask.sum(),
+                "accuracy": (seq_accuracy * valid_seq_mask.float()).sum(),
+                "exact_accuracy": seq_is_correct.float().sum(),
+                "count": valid_seq_mask.float().sum(),
             }
 
             outputs["preds"] = preds
