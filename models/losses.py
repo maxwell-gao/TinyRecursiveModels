@@ -139,10 +139,16 @@ class ACTLossHead(nn.Module):
 
 
 class CrossEntropyLossHead(nn.Module):
-    def __init__(self, model: nn.Module, loss_type: str = "stablemax_cross_entropy"):
+    def __init__(
+        self,
+        model: nn.Module,
+        loss_type: str = "stablemax_cross_entropy",
+        mask_penalty_weight: float = 0.0,
+    ):
         super().__init__()
         self.model = model
         self.loss_fn = globals()[loss_type]
+        self.mask_penalty_weight = mask_penalty_weight
 
     def initial_carry(self, *args, **kwargs):
         return self.model.initial_carry(*args, **kwargs)
@@ -200,8 +206,30 @@ class CrossEntropyLossHead(nn.Module):
             outputs["logits"], labels, ignore_index=IGNORE_LABEL_ID, valid_mask=mask
         )
 
+        # DIS Mask Penalty:
+        # If the target is NOT a mask, but the model predicts a mask, apply a penalty.
+        # This encourages the model to be "brave" and guess a number instead of hiding behind a mask.
+        # We assume the last token in vocab is the mask token.
+        vocab_size = outputs["logits"].shape[-1]
+        mask_token_id = vocab_size - 1
+        
+        # Check if we are in DIS mode (by checking if mask token is valid)
+        # And if the target is NOT the mask token
+        target_is_not_mask = (labels != mask_token_id) & mask
+        
+        # Calculate probability of predicting mask
+        # We use log_softmax to get log probs, then exp to get probs
+        probs = F.softmax(outputs["logits"].to(torch.float32), dim=-1)
+        mask_prob = probs[..., mask_token_id]
+        
+        # Penalty is proportional to the probability assigned to the mask token
+        # when it shouldn't be.
+        mask_penalty = (
+            (mask_prob * target_is_not_mask.float()).sum() * self.mask_penalty_weight
+        )
+
         # Sum all losses
-        total_loss = per_token_loss.sum()
+        total_loss = per_token_loss.sum() + mask_penalty
 
         # Total valid tokens
         total_tokens = mask.sum().clamp_min(1).float()
@@ -211,6 +239,7 @@ class CrossEntropyLossHead(nn.Module):
         metrics.update(
             {
                 "lm_loss": lm_loss.detach(),
+                "mask_penalty": mask_penalty.detach() / total_tokens,
             }
         )
 

@@ -1,6 +1,7 @@
 name: recursive_reasoning.loop_transformer@LoopTransformerModel_ACT
 loss:
   name: losses@CrossEntropyLossHead
+  mask_penalty_weight: 0.5
 
 halt_exploration_prob: 0.0
 halt_max_steps: 16
