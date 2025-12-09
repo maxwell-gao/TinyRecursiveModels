@@ -63,6 +63,7 @@ def train_batch(
             train_state.carry = train_state.model.initial_carry(batch)
 
         metrics = {}
+        accumulated_metrics = {}
 
         for step in range(dis_max_steps):
             # Generate target
@@ -84,6 +85,15 @@ def train_batch(
             train_state.carry, loss, metrics, _, _ = train_state.model(
                 carry=train_state.carry, batch=batch_step, return_keys=[], step=step
             )
+
+            # Accumulate metrics
+            for k, v in metrics.items():
+                if isinstance(v, torch.Tensor):
+                    v = v.detach()
+                if k not in accumulated_metrics:
+                    accumulated_metrics[k] = v
+                else:
+                    accumulated_metrics[k] += v
 
             # Backward
             ((1 / global_batch_size) * loss).backward()
@@ -116,6 +126,9 @@ def train_batch(
 
                 optim.step()
                 optim.zero_grad()
+
+        # Use accumulated metrics for logging
+        metrics = accumulated_metrics
 
     else:
         # Init carry if it is None
