@@ -109,7 +109,8 @@ def train_batch(
                     accumulated_metrics[k] += v
 
             # Backward (Accumulate gradients)
-            ((1 / global_batch_size) * loss).backward()
+            # Normalize by dis_max_steps to keep gradient scale consistent
+            ((1 / (global_batch_size * dis_max_steps)) * loss).backward()
 
         # Allreduce once per batch
         if fabric.world_size > 1:
@@ -139,7 +140,7 @@ def train_batch(
             optim.zero_grad()
 
         # Use accumulated metrics for logging
-        metrics = accumulated_metrics
+        metrics = {k: v / dis_max_steps for k, v in accumulated_metrics.items()}
 
     else:
         # Init carry if it is None
