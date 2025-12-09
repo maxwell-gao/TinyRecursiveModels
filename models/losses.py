@@ -139,9 +139,10 @@ class ACTLossHead(nn.Module):
 
 
 class CrossEntropyLossHead(nn.Module):
-    def __init__(self, model: nn.Module):
+    def __init__(self, model: nn.Module, loss_type: str = "softmax_cross_entropy"):
         super().__init__()
         self.model = model
+        self.loss_fn = globals()[loss_type]
 
     def initial_carry(self, *args, **kwargs):
         return self.model.initial_carry(*args, **kwargs)
@@ -158,61 +159,58 @@ class CrossEntropyLossHead(nn.Module):
         torch.Tensor,
     ]:
         new_carry, outputs = self.model(**model_kwargs)
-        labels = model_kwargs["batch"]["labels"]
-        logits = outputs["logits"]
+        # Use labels from carry if available, else from batch
+        if hasattr(new_carry, "current_data") and "labels" in new_carry.current_data:
+            labels = new_carry.current_data["labels"]
+        else:
+            labels = model_kwargs["batch"]["labels"]
 
-        # Loss
-        token_losses = F.cross_entropy(
-            logits.flatten(0, 1),
-            labels.flatten(0, 1),
-            ignore_index=IGNORE_LABEL_ID,
-            reduction="none",
-        ).view(labels.shape)
-
-        mask = labels != IGNORE_LABEL_ID
-        loss_counts = mask.sum(-1)
-        loss_divisor = loss_counts.clamp_min(1)
-
-        loss = (token_losses.sum(-1) / loss_divisor).sum()
-
-        # Metrics
         with torch.no_grad():
-            preds = torch.argmax(logits, dim=-1)
+            # Preds
+            outputs["preds"] = torch.argmax(outputs["logits"], dim=-1)
 
-            # Per-token correctness
-            is_correct = (preds == labels) & mask
+            # Correctness
+            mask = labels != IGNORE_LABEL_ID
+            loss_counts = mask.sum(-1)
+            loss_divisor = loss_counts.clamp_min(1).unsqueeze(
+                -1
+            )  # Avoid NaNs in division
 
-            # Per-sequence stats
-            valid_tokens_per_seq = mask.sum(dim=-1)
-            correct_tokens_per_seq = is_correct.sum(dim=-1)
+            is_correct = mask & (torch.argmax(outputs["logits"], dim=-1) == labels)
+            seq_is_correct = is_correct.sum(-1) == loss_counts
 
-            # Avoid division by zero for sequences with no valid tokens
-            seq_len_safe = valid_tokens_per_seq.clamp(min=1)
-
-            # Per-sequence accuracy (0.0 to 1.0)
-            seq_accuracy = correct_tokens_per_seq.float() / seq_len_safe
-
-            # Sequence is correct if all valid tokens are correct AND there was at least one valid token
-            seq_is_correct = (correct_tokens_per_seq == valid_tokens_per_seq) & (
-                valid_tokens_per_seq > 0
-            )
-
-            # Filter for sequences that have at least one valid token
-            valid_seq_mask = valid_tokens_per_seq > 0
-
+            # Metrics
+            valid_metrics = loss_counts > 0
             metrics = {
-                "loss": loss.detach(),
-                "accuracy": (seq_accuracy * valid_seq_mask.float()).sum(),
-                "exact_accuracy": seq_is_correct.float().sum(),
-                "count": valid_seq_mask.float().sum(),
+                "count": valid_metrics.sum(),
+                "accuracy": torch.where(
+                    valid_metrics,
+                    (is_correct.to(torch.float32) / loss_divisor).sum(-1),
+                    0,
+                ).sum(),
+                "exact_accuracy": (valid_metrics & seq_is_correct).sum(),
             }
+            if hasattr(new_carry, "steps"):
+                metrics["steps"] = torch.where(valid_metrics, new_carry.steps, 0).sum()
 
-            outputs["preds"] = preds
+        # Losses
+        lm_loss = (
+            self.loss_fn(
+                outputs["logits"], labels, ignore_index=IGNORE_LABEL_ID, valid_mask=mask
+            )
+            / loss_divisor
+        ).sum()
+
+        metrics.update(
+            {
+                "lm_loss": lm_loss.detach(),
+            }
+        )
 
         detached_outputs = {k: outputs[k].detach() for k in return_keys if k in outputs}
 
-        is_finished = torch.tensor(False, device=loss.device)
+        is_finished = torch.tensor(False, device=lm_loss.device)
         if hasattr(new_carry, "halted"):
             is_finished = new_carry.halted.all()
 
-        return new_carry, loss, metrics, detached_outputs, is_finished
+        return new_carry, lm_loss, metrics, detached_outputs, is_finished
