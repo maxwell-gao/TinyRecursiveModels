@@ -34,8 +34,8 @@ def softmax_cross_entropy(logits, labels, ignore_index: int = -100, valid_mask=N
     # Cast logits to f32
     # Flatten logits
     return F.cross_entropy(
-        logits.to(torch.float32).view(-1, logits.shape[-1]),
-        labels.to(torch.long).view(-1),
+        logits.to(torch.float32).reshape(-1, logits.shape[-1]),
+        labels.to(torch.long).reshape(-1),
         ignore_index=ignore_index,
         reduction="none",
     ).view(labels.shape)
