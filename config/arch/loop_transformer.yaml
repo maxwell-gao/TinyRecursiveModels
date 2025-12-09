@@ -27,7 +27,7 @@ states:
   - name: z_H
     layers: 1
   - name: z_L
-    layers: 2
+    layers: 1
     share_weights_with: z_H
 
 stages:
