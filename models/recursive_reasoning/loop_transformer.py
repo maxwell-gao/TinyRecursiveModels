@@ -423,7 +423,7 @@ class LoopTransformerModel_ACT(nn.Module):
         inner = self.inner.empty_carry(batch_size)
         zeros = torch.zeros((batch_size,), dtype=torch.int32)
         halted = torch.ones((batch_size,), dtype=torch.bool)
-        current_data = {k: torch.empty_like(v) for k, v in batch.items()}
+        current_data = {k: v for k, v in batch.items()}
         return LoopTransformerCarry(inner, zeros, halted, current_data)
 
     def forward(
@@ -441,9 +441,7 @@ class LoopTransformerModel_ACT(nn.Module):
             new_steps = carry.steps + 1
             halted = new_steps >= self.config.dis_max_steps
             return (
-                LoopTransformerCarry(
-                    new_inner_carry, new_steps, halted, carry.current_data
-                ),
+                LoopTransformerCarry(new_inner_carry, new_steps, halted, batch),
                 outputs,
             )
 
