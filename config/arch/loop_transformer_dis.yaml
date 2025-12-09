@@ -33,7 +33,7 @@ states:
 stages:
   - target: z
     include_inputs: true
-    repeat: 2
+    repeat: 1
 
 readout_state: z
 halt_state: z

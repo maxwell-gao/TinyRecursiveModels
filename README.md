@@ -142,8 +142,8 @@ data_paths="[data/sudoku-extreme-1k-aug-1000]" \
 evaluators="[]" \
 epochs=50000 eval_interval=5000 \
 +optimizer=muon \
-lr=0.0003 weight_decay=0.01 \
-+muon_lr=0.002 +muon_weight_decay=0.01 \
+lr=0.0003 weight_decay=0.1 \
++muon_lr=0.002 +muon_weight_decay=0.1 \
 puzzle_emb_lr=1e-4 puzzle_emb_weight_decay=1.0 \
 grad_clip_norm=-1.0 \
 run_name=${run_name} ema=True
