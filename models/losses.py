@@ -136,3 +136,57 @@ class ACTLossHead(nn.Module):
             detached_outputs,
             new_carry.halted.all(),
         )
+
+
+class CrossEntropyLossHead(nn.Module):
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+
+    def initial_carry(self, *args, **kwargs):
+        return self.model.initial_carry(*args, **kwargs)
+
+    def forward(
+        self,
+        return_keys: Sequence[str],
+        **model_kwargs,
+    ) -> Tuple[
+        Any,
+        torch.Tensor,
+        Dict[str, torch.Tensor],
+        Optional[Dict[str, torch.Tensor]],
+        torch.Tensor,
+    ]:
+        new_carry, outputs = self.model(**model_kwargs)
+        labels = model_kwargs["batch"]["labels"]
+        logits = outputs["logits"]
+
+        # Loss
+        loss = F.cross_entropy(
+            logits.flatten(0, 1),
+            labels.flatten(0, 1),
+            ignore_index=IGNORE_LABEL_ID,
+        )
+
+        # Metrics
+        with torch.no_grad():
+            mask = labels != IGNORE_LABEL_ID
+            preds = torch.argmax(logits, dim=-1)
+            correct = (preds == labels) & mask
+            accuracy = correct.sum() / mask.sum().clamp(min=1)
+
+            metrics = {
+                "loss": loss.detach(),
+                "accuracy": accuracy,
+                "count": mask.sum(),
+            }
+
+            outputs["preds"] = preds
+
+        detached_outputs = {k: outputs[k].detach() for k in return_keys if k in outputs}
+
+        is_finished = torch.tensor(False, device=loss.device)
+        if hasattr(new_carry, "halted"):
+            is_finished = new_carry.halted.all()
+
+        return new_carry, loss, metrics, detached_outputs, is_finished

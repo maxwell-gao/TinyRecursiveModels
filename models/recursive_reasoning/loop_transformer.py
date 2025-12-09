@@ -77,6 +77,9 @@ class LoopTransformerConfig(BaseModel):
     no_ACT_continue: bool = True
     gradient_checkpointing: bool = False
 
+    dis_enabled: bool = False
+    dis_max_steps: int = 16
+
     outer_cycles: int
     warmup_cycles: Optional[int] = None
 
@@ -154,6 +157,9 @@ class LoopTransformerInner(nn.Module):
         )
         self.lm_head = CastedLinear(config.hidden_size, config.vocab_size, bias=False)
         self.q_head = CastedLinear(config.hidden_size, 2, bias=True)
+
+        if config.dis_enabled:
+            self.step_emb = nn.Embedding(config.dis_max_steps, config.hidden_size)
 
         puzzle_len = (
             -(config.puzzle_emb_ndim // -config.hidden_size)
@@ -338,6 +344,7 @@ class LoopTransformerInner(nn.Module):
         self,
         carry: LoopTransformerInnerCarry,
         batch: Dict[str, torch.Tensor],
+        step_ids: Optional[torch.Tensor] = None,
     ) -> Tuple[
         LoopTransformerInnerCarry, torch.Tensor, Tuple[torch.Tensor, torch.Tensor]
     ]:
@@ -346,15 +353,22 @@ class LoopTransformerInner(nn.Module):
         )
         input_embeddings = self._input_embeddings(batch)
 
+        if self.config.dis_enabled and step_ids is not None:
+            input_embeddings = input_embeddings + self.step_emb(step_ids).unsqueeze(1)
+
         states = {name: tensor for name, tensor in carry.states.items()}
 
-        warmup_cycles = (
-            self.config.outer_cycles - 1
-            if self.config.warmup_cycles is None
-            else self.config.warmup_cycles
-        )
-        warmup_cycles = max(0, min(warmup_cycles, self.config.outer_cycles - 1))
-        grad_cycles = max(1, self.config.outer_cycles - warmup_cycles)
+        if self.config.dis_enabled:
+            warmup_cycles = 0
+            grad_cycles = 1
+        else:
+            warmup_cycles = (
+                self.config.outer_cycles - 1
+                if self.config.warmup_cycles is None
+                else self.config.warmup_cycles
+            )
+            warmup_cycles = max(0, min(warmup_cycles, self.config.outer_cycles - 1))
+            grad_cycles = max(1, self.config.outer_cycles - warmup_cycles)
 
         if warmup_cycles > 0:
             with torch.no_grad():
@@ -407,7 +421,22 @@ class LoopTransformerModel_ACT(nn.Module):
         carry: LoopTransformerCarry,
         batch: Dict[str, torch.Tensor],
         compute_target_q: bool = False,
+        step: Optional[torch.Tensor] = None,
     ) -> Tuple[LoopTransformerCarry, Dict[str, torch.Tensor]]:
+        if self.config.dis_enabled and step is not None:
+            new_inner_carry, logits, _ = self.inner(
+                carry.inner_carry, batch, step_ids=step
+            )
+            outputs = {"logits": logits}
+            new_steps = carry.steps + 1
+            halted = new_steps >= self.config.dis_max_steps
+            return (
+                LoopTransformerCarry(
+                    new_inner_carry, new_steps, halted, carry.current_data
+                ),
+                outputs,
+            )
+
         inner_carry = self.inner.reset_carry(carry.halted, carry.inner_carry)
         new_steps = torch.where(carry.halted, 0, carry.steps)
         new_current_data = {

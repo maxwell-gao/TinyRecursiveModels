@@ -1,0 +1,45 @@
+name: recursive_reasoning.loop_transformer@LoopTransformerModel_ACT
+loss:
+  name: losses@CrossEntropyLossHead
+
+halt_exploration_prob: 0.0
+halt_max_steps: 16
+act_enabled: false
+act_inference: false
+no_ACT_continue: true
+
+dis_enabled: true
+dis_max_steps: 6
+
+hidden_size: 512
+num_heads: 8
+expansion: 4
+
+puzzle_emb_ndim: ${.hidden_size}
+puzzle_emb_len: 16
+
+pos_encodings: rope
+forward_dtype: bfloat16
+dropout: 0.0
+
+outer_cycles: 1
+warmup_cycles: 0
+
+states:
+  - name: z_H
+    layers: 1
+  - name: z_L
+    layers: 1
+    share_weights_with: z_H
+
+stages:
+  - target: z_L
+    sources: [z_H]
+    include_inputs: true
+    repeat: 6
+  - target: z_H
+    sources: [z_L]
+    repeat: 3
+
+readout_state: z_H
+halt_state: z_H
