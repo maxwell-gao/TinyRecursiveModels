@@ -259,7 +259,7 @@ class LoopTransformerInner(nn.Module):
         return self.embed_scale * embedding
 
     def empty_carry(self, batch_size: int) -> LoopTransformerInnerCarry:
-        device = self.embed_tokens.weight.device
+        device = self.embed_tokens.embedding_weight.device
         states = {}
         shape = (
             batch_size,
