@@ -369,7 +369,7 @@ class LoopTransformerInner(nn.Module):
 
         if self.config.dis_enabled:
             warmup_cycles = 0
-            grad_cycles = 1
+            grad_cycles = self.config.outer_cycles
         else:
             warmup_cycles = (
                 self.config.outer_cycles - 1
