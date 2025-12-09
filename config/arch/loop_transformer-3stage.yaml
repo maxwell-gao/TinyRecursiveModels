@@ -4,11 +4,10 @@ loss:
   loss_type: stablemax_cross_entropy
 
 halt_exploration_prob: 0.1
-halt_max_steps: 8
+halt_max_steps: 16
 act_enabled: true
 act_inference: false
 no_ACT_continue: true
-gradient_checkpointing: true
 
 hidden_size: 512
 num_heads: 8
@@ -27,6 +26,9 @@ warmup_cycles: 2
 states:
   - name: z_H
     layers: 1
+  - name: z_M
+    layers: 1
+    share_weights_with: z_H
   - name: z_L
     layers: 1
     share_weights_with: z_H
@@ -36,8 +38,11 @@ stages:
     sources: [z_H]
     include_inputs: true
     repeat: 6
-  - target: z_H
+  - target: z_M
     sources: [z_L]
+    repeat: 3
+  - target: z_M
+    sources: [z_H]
     repeat: 3
 
 readout_state: z_H
