@@ -90,6 +90,9 @@ def train_batch(
             for k, v in metrics.items():
                 if isinstance(v, torch.Tensor):
                     v = v.detach()
+                    if torch.isnan(v).any():
+                        if fabric.global_rank == 0:
+                            print(f"WARNING: Metric {k} is NaN at step {step}")
                 if k not in accumulated_metrics:
                     accumulated_metrics[k] = v
                 else:
