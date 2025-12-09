@@ -259,6 +259,7 @@ class LoopTransformerInner(nn.Module):
         return self.embed_scale * embedding
 
     def empty_carry(self, batch_size: int) -> LoopTransformerInnerCarry:
+        device = self.embed_tokens.weight.device
         states = {}
         shape = (
             batch_size,
@@ -266,7 +267,7 @@ class LoopTransformerInner(nn.Module):
             self.config.hidden_size,
         )
         for name in self.state_names:
-            states[name] = torch.empty(shape, dtype=self.forward_dtype)
+            states[name] = torch.empty(shape, dtype=self.forward_dtype, device=device)
         return LoopTransformerInnerCarry(states=states)
 
     def reset_carry(
@@ -418,9 +419,14 @@ class LoopTransformerModel_ACT(nn.Module):
 
     def initial_carry(self, batch: Dict[str, torch.Tensor]) -> LoopTransformerCarry:
         batch_size = batch["inputs"].shape[0]
+        device = batch["inputs"].device
         inner = self.inner.empty_carry(batch_size)
-        zeros = torch.zeros((batch_size,), dtype=torch.int32)
-        halted = torch.ones((batch_size,), dtype=torch.bool)
+        zeros = torch.zeros((batch_size,), dtype=torch.int32, device=device)
+        halted = torch.ones((batch_size,), dtype=torch.bool, device=device)
+
+        # Initialize inner states
+        inner = self.inner.reset_carry(halted, inner)
+
         current_data = {k: v for k, v in batch.items()}
         return LoopTransformerCarry(inner, zeros, halted, current_data)
 
