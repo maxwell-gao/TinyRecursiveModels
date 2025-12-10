@@ -124,12 +124,6 @@ def train_batch(
                     else:
                         accumulated_metrics[k] += v
 
-                if step == dis_max_steps - 1:
-                    final_metrics = {
-                        k: v.detach() if isinstance(v, torch.Tensor) else v
-                        for k, v in metrics.items()
-                    }
-
                 # Backward (Accumulate gradients)
                 # Normalize by dis_max_steps to keep gradient scale consistent
                 ((1 / (global_batch_size * dis_max_steps)) * loss).backward()
@@ -140,7 +134,7 @@ def train_batch(
             for step in range(dis_max_steps):
                 # Target is always GT
                 batch_step = batch.copy()
-
+                
                 # Forward
                 step_tensor = torch.tensor(step, device="cuda", dtype=torch.long)
                 train_state.carry, loss, metrics, _, _ = train_state.model(
@@ -149,7 +143,7 @@ def train_batch(
                     return_keys=[],
                     step=step_tensor,
                 )
-
+                
                 losses.append(loss)
 
                 # Accumulate metrics
@@ -164,20 +158,14 @@ def train_batch(
                         accumulated_metrics[k] = v
                     else:
                         accumulated_metrics[k] += v
-
-                if step == dis_max_steps - 1:
-                    final_metrics = {
-                        k: v.detach() if isinstance(v, torch.Tensor) else v
-                        for k, v in metrics.items()
-                    }
-
+            
             # Compute total loss
             # L_final + sum(max(0, L_k - L_{k-1}.detach()))
             total_loss = losses[-1]
             for k in range(1, len(losses)):
-                improvement_penalty = torch.relu(losses[k] - losses[k - 1].detach())
+                improvement_penalty = torch.relu(losses[k] - losses[k-1].detach())
                 total_loss = total_loss + improvement_penalty
-
+            
             # Backward
             ((1 / global_batch_size) * total_loss).backward()
 
@@ -205,11 +193,11 @@ def train_batch(
                     train_state.model, optim, max_norm=config.grad_clip_norm
                 )
 
+            optim.step()
+            optim.zero_grad()
+
         # Use accumulated metrics for logging
         metrics = {k: v / dis_max_steps for k, v in accumulated_metrics.items()}
-        if "final_metrics" in locals():
-            for k, v in final_metrics.items():
-                metrics[f"final_{k}"] = v
 
     else:
         # Init carry if it is None
