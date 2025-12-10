@@ -4,13 +4,13 @@ loss:
   mask_penalty_weight: 0.5
 
 halt_exploration_prob: 0.0
-halt_max_steps: 16
+halt_max_steps: ${.dis_max_steps}
 act_enabled: false
 act_inference: false
 no_ACT_continue: true
 
 dis_enabled: true
-dis_max_steps: 6
+dis_max_steps: 16
 dis_schedule: linear
 
 hidden_size: 512
