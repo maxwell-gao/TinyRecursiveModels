@@ -56,6 +56,7 @@ def train_batch(
         # DIS Loop
         dis_max_steps = model_ref.config.dis_max_steps
         dis_schedule = model_ref.config.dis_schedule
+        dis_loss_method = getattr(model_ref.config, "dis_loss_method", "mask")
         vocab_size = model_ref.config.vocab_size
 
         # Always init carry for DIS to start fresh
@@ -69,62 +70,104 @@ def train_batch(
         for optim in train_state.optimizers:
             optim.zero_grad()
 
-        # Generate fixed noise for monotonic masking
-        # B, L
-        B, L = batch["labels"].shape
-        mask_noise = torch.rand(B, L, device="cuda")
+        if dis_loss_method == "mask":
+            # Generate fixed noise for monotonic masking
+            # B, L
+            B, L = batch["labels"].shape
+            mask_noise = torch.rand(B, L, device="cuda")
 
-        for step in range(dis_max_steps):
-            # Generate target
-            y_true = batch["labels"]
-            y_target = get_dis_target(
-                y_true,
-                step,
-                dis_max_steps,
-                vocab_size,
-                vocab_size - 1,  # mask_token_id is the last token
-                IGNORE_LABEL_ID,
-                dis_schedule,
-                noise=mask_noise,
-            )
+            for step in range(dis_max_steps):
+                # Generate target
+                y_true = batch["labels"]
+                y_target = get_dis_target(
+                    y_true,
+                    step,
+                    dis_max_steps,
+                    vocab_size,
+                    vocab_size - 1,  # mask_token_id is the last token
+                    IGNORE_LABEL_ID,
+                    dis_schedule,
+                    noise=mask_noise,
+                )
 
-            # CRITICAL FIX: Protect input clues from being masked
-            # If input == label, it means the answer is already given in the input (e.g. Sudoku clues).
-            # We must NOT mask these, otherwise the model learns to ignore inputs.
-            # Note: batch["inputs"] and batch["labels"] must be aligned.
-            if "inputs" in batch and batch["inputs"].shape == batch["labels"].shape:
-                is_clue = batch["inputs"] == batch["labels"]
-                y_target = torch.where(is_clue, y_true, y_target)
+                # CRITICAL FIX: Protect input clues from being masked
+                # If input == label, it means the answer is already given in the input (e.g. Sudoku clues).
+                # We must NOT mask these, otherwise the model learns to ignore inputs.
+                # Note: batch["inputs"] and batch["labels"] must be aligned.
+                if "inputs" in batch and batch["inputs"].shape == batch["labels"].shape:
+                    is_clue = batch["inputs"] == batch["labels"]
+                    y_target = torch.where(is_clue, y_true, y_target)
 
-            batch_step = batch.copy()
-            batch_step["labels"] = y_target
+                batch_step = batch.copy()
+                batch_step["labels"] = y_target
 
-            # Forward
-            # Pass step as tensor to avoid recompilation if compiled
-            step_tensor = torch.tensor(step, device="cuda", dtype=torch.long)
-            train_state.carry, loss, metrics, _, _ = train_state.model(
-                carry=train_state.carry,
-                batch=batch_step,
-                return_keys=[],
-                step=step_tensor,
-            )
+                # Forward
+                # Pass step as tensor to avoid recompilation if compiled
+                step_tensor = torch.tensor(step, device="cuda", dtype=torch.long)
+                train_state.carry, loss, metrics, _, _ = train_state.model(
+                    carry=train_state.carry,
+                    batch=batch_step,
+                    return_keys=[],
+                    step=step_tensor,
+                )
 
-            # Accumulate metrics
-            for k, v in metrics.items():
-                if isinstance(v, torch.Tensor):
-                    v = v.detach()
-                    if torch.isnan(v).any():
-                        if fabric.global_rank == 0:
-                            print(f"WARNING: Metric {k} is NaN at step {step}")
+                # Accumulate metrics
+                for k, v in metrics.items():
+                    if isinstance(v, torch.Tensor):
+                        v = v.detach()
+                        if torch.isnan(v).any():
+                            if fabric.global_rank == 0:
+                                print(f"WARNING: Metric {k} is NaN at step {step}")
 
-                if k not in accumulated_metrics:
-                    accumulated_metrics[k] = v
-                else:
-                    accumulated_metrics[k] += v
+                    if k not in accumulated_metrics:
+                        accumulated_metrics[k] = v
+                    else:
+                        accumulated_metrics[k] += v
 
-            # Backward (Accumulate gradients)
-            # Normalize by dis_max_steps to keep gradient scale consistent
-            ((1 / (global_batch_size * dis_max_steps)) * loss).backward()
+                # Backward (Accumulate gradients)
+                # Normalize by dis_max_steps to keep gradient scale consistent
+                ((1 / (global_batch_size * dis_max_steps)) * loss).backward()
+
+        else:
+            # Loss method: Target is always GT, enforce improvement
+            losses = []
+            for step in range(dis_max_steps):
+                # Target is always GT
+                batch_step = batch.copy()
+                
+                # Forward
+                step_tensor = torch.tensor(step, device="cuda", dtype=torch.long)
+                train_state.carry, loss, metrics, _, _ = train_state.model(
+                    carry=train_state.carry,
+                    batch=batch_step,
+                    return_keys=[],
+                    step=step_tensor,
+                )
+                
+                losses.append(loss)
+
+                # Accumulate metrics
+                for k, v in metrics.items():
+                    if isinstance(v, torch.Tensor):
+                        v = v.detach()
+                        if torch.isnan(v).any():
+                            if fabric.global_rank == 0:
+                                print(f"WARNING: Metric {k} is NaN at step {step}")
+
+                    if k not in accumulated_metrics:
+                        accumulated_metrics[k] = v
+                    else:
+                        accumulated_metrics[k] += v
+            
+            # Compute total loss
+            # L_final + sum(max(0, L_k - L_{k-1}.detach()))
+            total_loss = losses[-1]
+            for k in range(1, len(losses)):
+                improvement_penalty = torch.relu(losses[k] - losses[k-1].detach())
+                total_loss = total_loss + improvement_penalty
+            
+            # Backward
+            ((1 / global_batch_size) * total_loss).backward()
 
         # Allreduce once per batch
         if fabric.world_size > 1:

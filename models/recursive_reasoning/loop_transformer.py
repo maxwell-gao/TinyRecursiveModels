@@ -80,6 +80,7 @@ class LoopTransformerConfig(BaseModel):
     dis_enabled: bool = False
     dis_max_steps: int = 16
     dis_schedule: str = "linear"
+    dis_loss_method: str = "mask"
 
     outer_cycles: int
     warmup_cycles: Optional[int] = None
