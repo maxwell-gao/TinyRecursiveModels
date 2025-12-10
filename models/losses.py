@@ -212,21 +212,21 @@ class CrossEntropyLossHead(nn.Module):
         # We assume the last token in vocab is the mask token.
         vocab_size = outputs["logits"].shape[-1]
         mask_token_id = vocab_size - 1
-        
+
         # Check if we are in DIS mode (by checking if mask token is valid)
         # And if the target is NOT the mask token
         target_is_not_mask = (labels != mask_token_id) & mask
-        
+
         # Calculate probability of predicting mask
         # We use log_softmax to get log probs, then exp to get probs
         probs = F.softmax(outputs["logits"].to(torch.float32), dim=-1)
         mask_prob = probs[..., mask_token_id]
-        
+
         # Penalty is proportional to the probability assigned to the mask token
         # when it shouldn't be.
         mask_penalty = (
-            (mask_prob * target_is_not_mask.float()).sum() * self.mask_penalty_weight
-        )
+            mask_prob * target_is_not_mask.float()
+        ).sum() * self.mask_penalty_weight
 
         # Sum all losses
         total_loss = per_token_loss.sum() + mask_penalty
