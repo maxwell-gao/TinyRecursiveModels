@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import os
 import math
 import yaml
-import json
 import shutil
 import copy
 
@@ -17,7 +16,7 @@ import wandb
 import coolname
 import hydra
 import pydantic
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from adam_atan2_pytorch import AdamAtan2
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
@@ -666,7 +665,7 @@ def save_code_and_config(config: PretrainConfig):
     # Dump config as yaml
     config_file = os.path.join(config.checkpoint_path, "all_config.yaml")
     with open(config_file, "wt") as f:
-        yaml.dump(json.loads(config.model_dump_json()), f)
+        yaml.dump(config.model_dump(mode="json"), f)
 
     # Log code
     wandb.run.log_code(config.checkpoint_path)
@@ -677,7 +676,9 @@ def load_synced_config(
 ) -> PretrainConfig:
     objects = [None]
     if rank == 0:
-        config = PretrainConfig(**hydra_config)  # type: ignore
+        # Convert OmegaConf to native Python types to avoid serialization issues
+        config_dict = OmegaConf.to_container(hydra_config, resolve=True)
+        config = PretrainConfig(**config_dict)  # type: ignore
 
         # Naming
         if config.project_name is None:

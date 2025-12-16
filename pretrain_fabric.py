@@ -12,14 +12,14 @@ import copy
 import shutil
 import yaml
 import subprocess
-import json
+
 import torch
 import torch.distributed as dist
 import tqdm
 import wandb
 import coolname
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from lightning.fabric import Fabric
 
 from train.config import PretrainConfig
@@ -51,7 +51,7 @@ def save_code_and_config(config: PretrainConfig) -> None:
     # Dump config as yaml
     config_file = os.path.join(config.checkpoint_path, "all_config.yaml")
     with open(config_file, "wt") as f:
-        yaml.dump(json.loads(config.model_dump_json()), f)
+        yaml.dump(config.model_dump(mode="json"), f)
 
     # Log code
     wandb.run.log_code(config.checkpoint_path)
@@ -62,7 +62,9 @@ def load_synced_config(hydra_config: DictConfig, fabric: Fabric) -> PretrainConf
     config = None
 
     if fabric.global_rank == 0:
-        config = PretrainConfig(**hydra_config)  # type: ignore
+        # Convert OmegaConf to native Python types to avoid serialization issues
+        config_dict = OmegaConf.to_container(hydra_config, resolve=True)
+        config = PretrainConfig(**config_dict)  # type: ignore
 
         # Naming
         if config.project_name is None:
