@@ -16,7 +16,7 @@ import wandb
 import coolname
 import hydra
 import pydantic
-from omegaconf import DictConfig
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from adam_atan2_pytorch import AdamAtan2
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
@@ -645,6 +645,17 @@ def evaluate(
     return reduced_metrics
 
 
+def _convert_to_plain_types(obj):
+    """Recursively convert OmegaConf containers to plain Python types."""
+    if isinstance(obj, (DictConfig, ListConfig)):
+        return OmegaConf.to_container(obj, resolve=True)
+    elif isinstance(obj, dict):
+        return {k: _convert_to_plain_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_to_plain_types(item) for item in obj]
+    return obj
+
+
 def save_code_and_config(config: PretrainConfig):
     if config.checkpoint_path is None or wandb.run is None:
         return
@@ -662,10 +673,11 @@ def save_code_and_config(config: PretrainConfig):
 
             shutil.copy(code_file, os.path.join(config.checkpoint_path, code_name))
 
-    # Dump config as yaml
+    # Dump config as yaml (convert OmegaConf types to plain Python types first)
     config_file = os.path.join(config.checkpoint_path, "all_config.yaml")
+    config_dict = _convert_to_plain_types(config.model_dump())
     with open(config_file, "wt") as f:
-        yaml.safe_dump(config.model_dump(mode="json"), f)
+        yaml.safe_dump(config_dict, f)
 
     # Log code
     wandb.run.log_code(config.checkpoint_path)
