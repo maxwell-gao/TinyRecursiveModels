@@ -12,7 +12,7 @@ import copy
 import shutil
 import yaml
 import subprocess
-
+import json
 import torch
 import torch.distributed as dist
 import tqdm
@@ -51,7 +51,7 @@ def save_code_and_config(config: PretrainConfig) -> None:
     # Dump config as yaml
     config_file = os.path.join(config.checkpoint_path, "all_config.yaml")
     with open(config_file, "wt") as f:
-        yaml.dump(config.model_dump(), f)
+        yaml.dump(json.loads(config.model_dump_json()), f)
 
     # Log code
     wandb.run.log_code(config.checkpoint_path)
