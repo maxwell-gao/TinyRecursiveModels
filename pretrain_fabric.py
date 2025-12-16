@@ -51,7 +51,7 @@ def save_code_and_config(config: PretrainConfig) -> None:
     # Dump config as yaml
     config_file = os.path.join(config.checkpoint_path, "all_config.yaml")
     with open(config_file, "wt") as f:
-        yaml.dump(config.model_dump(), f)
+        yaml.safe_dump(config.model_dump(mode='json'), f)
 
     # Log code
     wandb.run.log_code(config.checkpoint_path)
