@@ -17,7 +17,7 @@ import tqdm
 import wandb
 import coolname
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf, ListConfig
 from lightning.fabric import Fabric
 
 from train.config import PretrainConfig
@@ -48,8 +48,19 @@ def save_code_and_config(config: PretrainConfig) -> None:
 
     # Dump config as yaml
     config_file = os.path.join(config.checkpoint_path, "all_config.yaml")
+    
+    def to_primitive(obj):
+        """Recursively convert OmegaConf types to plain Python types."""
+        if isinstance(obj, (ListConfig, DictConfig)):
+            return OmegaConf.to_container(obj, resolve=True)
+        if isinstance(obj, dict):
+            return {k: to_primitive(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [to_primitive(v) for v in obj]
+        return obj
+    
     with open(config_file, "wt") as f:
-        yaml.dump(config.model_dump(), f)
+        yaml.dump(to_primitive(config.model_dump()), f)
 
     # Log code
     wandb.run.log_code(config.checkpoint_path)
